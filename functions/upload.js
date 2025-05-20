@@ -69,3 +69,15 @@ export async function onRequest(context) {
     });
   }
 }
+
+// 提取 file_id
+function extractFileId(result) {
+  if (result.photo) {
+    // 取最大尺寸的 file_id
+    return result.photo.reduce((prev, curr) => (prev.file_size > curr.file_size ? prev : curr)).file_id;
+  }
+  if (result.document) return result.document.file_id;
+  if (result.video) return result.video.file_id;
+  if (result.audio) return result.audio.file_id;
+  return null;
+}
