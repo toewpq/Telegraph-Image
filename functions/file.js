@@ -1,48 +1,32 @@
+// /functions/file.js
 export async function onRequest(context) {
-    const { params, env } = context;
-    const { id } = params;  // 获取 URL 中的文件 ID
+  const { params, env } = context;
+  const { id } = params;  // file_id 由 URL 参数获取
 
-    try {
-        // 获取 Telegram 文件 URL
-        const fileUrl = await getTelegramFileUrl(id, env);
+  try {
+    // 使用 file_id 获取 Telegram 上的文件路径
+    const getFileUrl = `https://api.telegram.org/bot${env.TG_Bot_Token}/getFile?file_id=${id}`;
+    const getFileRes = await fetch(getFileUrl);
+    const getFileData = await getFileRes.json();
 
-        if (!fileUrl) {
-            return new Response(JSON.stringify({ success: false, message: 'File not found' }), {
-                status: 404,
-                headers: { 'Content-Type': 'application/json' }
-            });
+    if (getFileData.ok && getFileData.result && getFileData.result.file_path) {
+      // 文件路径
+      const file_url = `https://api.telegram.org/file/bot${env.TG_Bot_Token}/${getFileData.result.file_path}`;
+      
+      // 获取文件内容并返回
+      const fileRes = await fetch(file_url);
+      const fileBuffer = await fileRes.buffer();
+
+      return new Response(fileBuffer, {
+        headers: {
+          'Content-Type': 'application/octet-stream',
+          'Content-Disposition': `attachment; filename=${id}`
         }
-
-        // 获取文件内容并返回
-        const response = await fetch(fileUrl);
-        if (!response.ok) {
-            return new Response(JSON.stringify({ success: false, message: 'Failed to fetch file' }), {
-                status: 500,
-                headers: { 'Content-Type': 'application/json' }
-            });
-        }
-
-        // 返回文件内容，代理给前端
-        return new Response(response.body, {
-            headers: response.headers,
-        });
-
-    } catch (error) {
-        return new Response(JSON.stringify({ success: false, message: error.message }), {
-            status: 500,
-            headers: { 'Content-Type': 'application/json' }
-        });
+      });
+    } else {
+      return new Response('文件获取失败', { status: 500 });
     }
-}
-
-// 获取 Telegram 文件 URL
-async function getTelegramFileUrl(file_id, env) {
-    const url = `https://api.telegram.org/bot${env.TG_Bot_Token}/getFile?file_id=${file_id}`;
-    const res = await fetch(url);
-    const data = await res.json();
-
-    if (data.ok && data.result && data.result.file_path) {
-        return `https://api.telegram.org/file/bot${env.TG_Bot_Token}/${data.result.file_path}`;
-    }
-    return null;
+  } catch (error) {
+    return new Response('服务器错误: ' + error.message, { status: 500 });
+  }
 }
