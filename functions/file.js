@@ -1,32 +1,47 @@
-// /functions/file.js
 export async function onRequest(context) {
   const { params, env } = context;
-  const { id } = params;  // file_id 由 URL 参数获取
+  const { id } = params;  // 获取 file_id
 
   try {
-    // 使用 file_id 获取 Telegram 上的文件路径
-    const getFileUrl = `https://api.telegram.org/bot${env.TG_Bot_Token}/getFile?file_id=${id}`;
-    const getFileRes = await fetch(getFileUrl);
-    const getFileData = await getFileRes.json();
+    // 使用 Telegram API 获取文件的真实 URL
+    const fileUrl = await getFileUrl(env.TG_Bot_Token, id);
 
-    if (getFileData.ok && getFileData.result && getFileData.result.file_path) {
-      // 文件路径
-      const file_url = `https://api.telegram.org/file/bot${env.TG_Bot_Token}/${getFileData.result.file_path}`;
-      
-      // 获取文件内容并返回
-      const fileRes = await fetch(file_url);
-      const fileBuffer = await fileRes.buffer();
-
-      return new Response(fileBuffer, {
-        headers: {
-          'Content-Type': 'application/octet-stream',
-          'Content-Disposition': `attachment; filename=${id}`
-        }
-      });
-    } else {
-      return new Response('文件获取失败', { status: 500 });
+    if (!fileUrl) {
+      return new Response("File not found", { status: 404 });
     }
+
+    // 代理文件请求
+    const response = await fetch(fileUrl);
+    
+    // 如果 Telegram 返回的响应不为 OK，返回 500 错误
+    if (!response.ok) {
+      return new Response("Failed to fetch file from Telegram", { status: 500 });
+    }
+
+    // 返回文件内容
+    const headers = new Headers();
+    // 根据文件类型设置适当的 Content-Type
+    headers.set("Content-Type", response.headers.get("Content-Type") || "application/octet-stream");
+
+    return new Response(response.body, {
+      status: 200,
+      headers: headers
+    });
+
   } catch (error) {
-    return new Response('服务器错误: ' + error.message, { status: 500 });
+    return new Response(`Error: ${error.message}`, { status: 500 });
   }
+}
+
+// 使用 Telegram API 获取文件真实 URL
+async function getFileUrl(botToken, fileId) {
+  const url = `https://api.telegram.org/bot${botToken}/getFile?file_id=${fileId}`;
+  const res = await fetch(url);
+  const data = await res.json();
+
+  if (res.ok && data.ok && data.result && data.result.file_path) {
+    // 返回完整的文件 URL
+    return `https://api.telegram.org/file/bot${botToken}/${data.result.file_path}`;
+  }
+  return null;
 }
