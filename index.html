@@ -1,0 +1,200 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+  <meta charset="UTF-8">
+  <title>Telegraph-Image 免费图床</title>
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <style>
+    body {
+      font-family: "Segoe UI", "PingFang SC", "Hiragino Sans GB", Arial, sans-serif;
+      background: #f7f7f7;
+      margin: 0;
+      padding: 0;
+      min-height: 100vh;
+      display: flex;
+      flex-direction: column;
+      align-items: center;
+    }
+    .container {
+      background: #fff;
+      margin-top: 60px;
+      padding: 32px 24px 24px 24px;
+      border-radius: 12px;
+      box-shadow: 0 2px 16px rgba(0,0,0,0.08);
+      max-width: 400px;
+      width: 100%;
+      text-align: center;
+    }
+    h2 {
+      margin-bottom: 16px;
+      color: #222;
+    }
+    .file-input {
+      margin: 16px 0;
+    }
+    .btn {
+      background: #3b82f6;
+      color: #fff;
+      border: none;
+      padding: 10px 28px;
+      border-radius: 6px;
+      font-size: 16px;
+      cursor: pointer;
+      margin-top: 8px;
+      transition: background 0.2s;
+    }
+    .btn:disabled {
+      background: #bcd7fa;
+      cursor: not-allowed;
+    }
+    .result {
+      margin-top: 24px;
+      word-break: break-all;
+    }
+    .preview-img {
+      margin-top: 12px;
+      max-width: 100%;
+      border-radius: 8px;
+      box-shadow: 0 1px 6px rgba(0,0,0,0.07);
+    }
+    .copy-btn {
+      background: #10b981;
+      margin-left: 8px;
+      padding: 6px 14px;
+      font-size: 14px;
+    }
+    .progress-bar {
+      width: 100%;
+      background: #eee;
+      border-radius: 6px;
+      margin-top: 16px;
+      height: 10px;
+      overflow: hidden;
+    }
+    .progress-inner {
+      height: 100%;
+      background: #3b82f6;
+      width: 0;
+      transition: width 0.3s;
+    }
+    .tip {
+      color: #888;
+      font-size: 13px;
+      margin-top: 8px;
+    }
+  </style>
+</head>
+<body>
+  <div class="container">
+    <h2>Telegraph-Image 免费图床</h2>
+    <div class="file-input">
+      <input type="file" id="fileInput" accept="image/*">
+    </div>
+    <button class="btn" id="uploadBtn" onclick="uploadImage()">上传图片</button>
+    <div class="tip">支持 jpg/png/gif/webp，最大 5MB</div>
+    <div class="progress-bar" id="progressBar" style="display:none;">
+      <div class="progress-inner" id="progressInner"></div>
+    </div>
+    <div class="result" id="result"></div>
+  </div>
+  <script>
+    // Cloudflare Pages Functions API 路径
+    const UPLOAD_API = '/api/upload';
+
+    const fileInput = document.getElementById('fileInput');
+    const uploadBtn = document.getElementById('uploadBtn');
+    const resultDiv = document.getElementById('result');
+    const progressBar = document.getElementById('progressBar');
+    const progressInner = document.getElementById('progressInner');
+
+    function resetUI() {
+      resultDiv.innerHTML = '';
+      progressBar.style.display = 'none';
+      progressInner.style.width = '0';
+    }
+
+    fileInput.addEventListener('change', resetUI);
+
+    function showProgress(percent) {
+      progressBar.style.display = 'block';
+      progressInner.style.width = percent + '%';
+    }
+
+    async function uploadImage() {
+      resetUI();
+      if (!fileInput.files.length) {
+        resultDiv.innerHTML = '<span style="color:#e11d48;">请选择图片文件</span>';
+        return;
+      }
+      const file = fileInput.files[0];
+      if (file.size > 5 * 1024 * 1024) {
+        resultDiv.innerHTML = '<span style="color:#e11d48;">图片不能超过 5MB</span>';
+        return;
+      }
+      uploadBtn.disabled = true;
+      showProgress(10);
+      resultDiv.innerHTML = '上传中...';
+
+      const formData = new FormData();
+      formData.append('image', file);
+
+      // 使用 XMLHttpRequest 以便显示上传进度
+      const xhr = new XMLHttpRequest();
+      xhr.open('POST', UPLOAD_API, true);
+
+      xhr.upload.onprogress = function(e) {
+        if (e.lengthComputable) {
+          let percent = Math.round((e.loaded / e.total) * 80) + 10;
+          if (percent > 90) percent = 90;
+          showProgress(percent);
+        }
+      };
+
+      xhr.onload = function() {
+        uploadBtn.disabled = false;
+        showProgress(100);
+        try {
+          const data = JSON.parse(xhr.responseText);
+          if (data.success) {
+            resultDiv.innerHTML = `
+              <div>上传成功！</div>
+              <a href="${data.url}" target="_blank">${data.url}</a>
+              <button class="btn copy-btn" onclick="copyLink('${data.url}')">复制链接</button>
+              <br>
+              <img src="${data.url}" class="preview-img">
+            `;
+          } else {
+            resultDiv.innerHTML = '<span style="color:#e11d48;">上传失败: ' + (data.message || '未知错误') + '</span>';
+          }
+        } catch (e) {
+          resultDiv.innerHTML = '<span style="color:#e11d48;">上传失败: 服务器响应异常</span>';
+        }
+      };
+
+      xhr.onerror = function() {
+        uploadBtn.disabled = false;
+        resultDiv.innerHTML = '<span style="color:#e11d48;">上传失败: 网络错误</span>';
+      };
+
+      xhr.send(formData);
+    }
+
+    function copyLink(url) {
+      if (navigator.clipboard) {
+        navigator.clipboard.writeText(url).then(() => {
+          alert('已复制到剪贴板');
+        });
+      } else {
+        // 兼容旧浏览器
+        const input = document.createElement('input');
+        input.value = url;
+        document.body.appendChild(input);
+        input.select();
+        document.execCommand('copy');
+        document.body.removeChild(input);
+        alert('已复制到剪贴板');
+      }
+    }
+  </script>
+</body>
+</html>
