@@ -37,37 +37,39 @@ export async function onRequestPost(context) {
         const tgRes = await fetch(apiUrl, { method: "POST", body: telegramForm });
         const tgData = await tgRes.json();
 
-if (!tgRes.ok || !tgData.ok) {
-    return new Response(JSON.stringify({ success: false, message: tgData.description || 'Upload to Telegram failed' }), {
-        status: 500,
-        headers: { 'Content-Type': 'application/json' }
-    });
-}
+        if (!tgRes.ok || !tgData.ok) {
+            return new Response(JSON.stringify({ success: false, message: tgData.description || 'Upload to Telegram failed' }), {
+                status: 500,
+                headers: { 'Content-Type': 'application/json' }
+            });
+        }
 
-// 获取 file_id
-const file_id = extractFileId(tgData.result);
+        // 获取 file_id
+        const file_id = extractFileId(tgData.result);
 
-// 通过 getFile API 获取 file_path
-let file_url = null;
-if (file_id) {
-    const getFileUrl = `https://api.telegram.org/bot${env.TG_Bot_Token}/getFile?file_id=${file_id}`;
-    const getFileRes = await fetch(getFileUrl);
-    const getFileData = await getFileRes.json();
-    if (getFileData.ok && getFileData.result && getFileData.result.file_path) {
-        file_url = `https://api.telegram.org/file/bot${env.TG_Bot_Token}/${getFileData.result.file_path}`;
-    }
-}
+        // 通过 getFile API 获取 file_path
+        let file_url = null;
+        if (file_id) {
+            const getFileUrl = `https://api.telegram.org/bot${env.TG_Bot_Token}/getFile?file_id=${file_id}`;
+            const getFileRes = await fetch(getFileUrl);
+            const getFileData = await getFileRes.json();
+            if (getFileData.ok && getFileData.result && getFileData.result.file_path) {
+                file_url = `https://api.telegram.org/file/bot${env.TG_Bot_Token}/${getFileData.result.file_path}`;
+            }
+        }
 
-// 返回 file_id 及图片直链 url
-return new Response(JSON.stringify({
-    success: true,
-    file_id,
-    url: file_url,
-    message: tgData.result
-}), {
-    status: 200,
-    headers: { 'Content-Type': 'application/json' }
-});
+        // 返回代理 URL
+        const proxyUrl = file_url ? `/file/${file_id}` : null;
+
+        return new Response(JSON.stringify({
+            success: true,
+            file_id,
+            url: proxyUrl,
+            message: tgData.result
+        }), {
+            status: 200,
+            headers: { 'Content-Type': 'application/json' }
+        });
 
     } catch (error) {
         return new Response(JSON.stringify({ success: false, message: error.message }), {
