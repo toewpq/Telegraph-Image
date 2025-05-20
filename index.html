@@ -156,13 +156,13 @@
         try {
           const data = JSON.parse(xhr.responseText);
           if (data.success) {
-            if (data.proxy_url) {
+            if (data.url) {
               resultDiv.innerHTML = `
                 <div>上传成功！</div>
-                <a href="${data.proxy_url}" target="_blank">${data.proxy_url}</a>
-                <button class="btn copy-btn" onclick="copyLink('${data.proxy_url}')">复制链接</button>
+                <a href="${data.url}" target="_blank">${data.url}</a>
+                <button class="btn copy-btn" onclick="copyLink('${data.url}')">复制链接</button>
                 <br>
-                <img src="${data.proxy_url}" class="preview-img">
+                <img src="${data.url}" class="preview-img">
               `;
             } else {
               resultDiv.innerHTML = `<span style="color:#e11d48;">上传成功，但未获取到图片链接</span>`;
