@@ -1,60 +1,77 @@
 // functions/upload.js
 
 export async function onRequestPost(context) {
-  const { request } = context;
+    const { request, env } = context;
 
-  // 允许跨域
-  const corsHeaders = {
-    "Access-Control-Allow-Origin": "*",
-    "Access-Control-Allow-Methods": "POST, OPTIONS",
-    "Access-Control-Allow-Headers": "Content-Type",
-  };
+    try {
+        const formData = await request.formData();
+        const uploadFile = formData.get('file');
+        if (!uploadFile) {
+            return new Response(JSON.stringify({ error: 'No file uploaded' }), {
+                status: 400,
+                headers: { 'Content-Type': 'application/json' }
+            });
+        }
 
-  // 处理 CORS 预检请求
-  if (request.method === "OPTIONS") {
-    return new Response(null, { headers: corsHeaders });
-  }
+        // 选择 Telegram API 端点
+        let apiEndpoint, fieldName;
+        if (uploadFile.type.startsWith('image/')) {
+            apiEndpoint = 'sendPhoto';
+            fieldName = 'photo';
+        } else if (uploadFile.type.startsWith('audio/')) {
+            apiEndpoint = 'sendAudio';
+            fieldName = 'audio';
+        } else if (uploadFile.type.startsWith('video/')) {
+            apiEndpoint = 'sendVideo';
+            fieldName = 'video';
+        } else {
+            apiEndpoint = 'sendDocument';
+            fieldName = 'document';
+        }
 
-  try {
-    // 解析 multipart/form-data
-    const formData = await request.formData();
-    const file = formData.get("image");
+        // 构造 Telegram form-data
+        const telegramForm = new FormData();
+        telegramForm.append('chat_id', env.TG_Chat_ID);
+        telegramForm.append(fieldName, uploadFile, uploadFile.name);
 
-    if (!file) {
-      return new Response(JSON.stringify({ success: false, message: "未检测到图片文件" }), {
-        status: 400,
-        headers: { "Content-Type": "application/json", ...corsHeaders },
-      });
+        // 上传到 Telegram
+        const apiUrl = `https://api.telegram.org/bot${env.TG_Bot_Token}/${apiEndpoint}`;
+        const tgRes = await fetch(apiUrl, { method: "POST", body: telegramForm });
+        const tgData = await tgRes.json();
+
+        if (!tgRes.ok || !tgData.ok) {
+            return new Response(JSON.stringify({ error: tgData.description || 'Upload to Telegram failed' }), {
+                status: 500,
+                headers: { 'Content-Type': 'application/json' }
+            });
+        }
+
+        // 返回 file_id 及消息详情
+        return new Response(JSON.stringify({
+            success: true,
+            file_id: extractFileId(tgData.result),
+            message: tgData.result
+        }), {
+            status: 200,
+            headers: { 'Content-Type': 'application/json' }
+        });
+
+    } catch (error) {
+        return new Response(JSON.stringify({ error: error.message }), {
+            status: 500,
+            headers: { 'Content-Type': 'application/json' }
+        });
     }
+}
 
-    // 构造 telegra.ph 的 form-data
-    const tgForm = new FormData();
-    tgForm.append("file", file, file.name);
-
-    // 上传到 telegra.ph
-    const tgRes = await fetch("https://telegra.ph/upload", {
-      method: "POST",
-      body: tgForm,
-    });
-    const tgData = await tgRes.json();
-
-    if (tgData[0] && tgData[0].src) {
-      return new Response(JSON.stringify({
-        success: true,
-        url: "https://telegra.ph" + tgData[0].src,
-      }), {
-        headers: { "Content-Type": "application/json", ...corsHeaders },
-      });
-    } else {
-      return new Response(JSON.stringify({ success: false, message: "Telegraph 上传失败" }), {
-        status: 500,
-        headers: { "Content-Type": "application/json", ...corsHeaders },
-      });
+// 提取 file_id
+function extractFileId(result) {
+    if (result.photo) {
+        // 取最大尺寸的 file_id
+        return result.photo.reduce((prev, curr) => (prev.file_size > curr.file_size ? prev : curr)).file_id;
     }
-  } catch (e) {
-    return new Response(JSON.stringify({ success: false, message: e.message }), {
-      status: 500,
-      headers: { "Content-Type": "application/json", ...corsHeaders },
-    });
-  }
+    if (result.document) return result.document.file_id;
+    if (result.video) return result.video.file_id;
+    if (result.audio) return result.audio.file_id;
+    return null;
 }
