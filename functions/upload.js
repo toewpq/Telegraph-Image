@@ -53,16 +53,13 @@ export async function onRequestPost(context) {
             const getFileUrl = `https://api.telegram.org/bot${env.TG_Bot_Token}/getFile?file_id=${file_id}`;
             const getFileRes = await fetch(getFileUrl);
             const getFileData = await getFileRes.json();
-            if (getFileData.ok && getFileData.result && getFileData.result.file_path) {
-                const file_path = getFileData.result.file_path; // 例如 photos/file_12345.jpg
-                // 替换 / 为 _，以适配 [file_path].js
-                const safe_file_path = file_path.replace(/\//g, '_');
-                // 智能识别当前域名
-                const host = request.headers.get('host');
-                const protocol = request.headers.get('x-forwarded-proto') || 'https';
-                const proxyBase = `${protocol}://${host}`;
-                proxy_url = `${proxyBase}/tgimg/${safe_file_path}`;
-            }
+        if (getFileData.ok && getFileData.result && getFileData.result.file_path) {
+    const file_path = getFileData.result.file_path;
+    const host = request.headers.get('host');
+    const protocol = request.headers.get('x-forwarded-proto') || 'https';
+    const proxyBase = `${protocol}://${host}`;
+    proxy_url = `${proxyBase}/tgimg?file_path=${encodeURIComponent(file_path)}`;
+           }
         }
 
         // 只返回代理地址
