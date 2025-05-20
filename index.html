@@ -136,7 +136,7 @@
       resultDiv.innerHTML = '上传中...';
 
       const formData = new FormData();
-      formData.append('image', file);
+      formData.append('file', file); // 这里将 'image' 改为 'file'
 
       // 使用 XMLHttpRequest 以便显示上传进度
       const xhr = new XMLHttpRequest();
