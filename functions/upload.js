@@ -1,4 +1,3 @@
-// /functions/upload.js
 export async function onRequest(context) {
   const { request, env } = context;
 
@@ -48,11 +47,17 @@ export async function onRequest(context) {
     // 获取 file_id
     const file_id = extractFileId(tgData.result);
 
-    // 返回代理 URL
+    // 动态获取请求的域名和协议
+    const url = new URL(request.url);
+    const baseUrl = `${url.protocol}//${url.hostname}`; // 获取域名和协议
+
+    // 返回代理 URL，拼接完整的文件 URL
+    const fileUrl = `${baseUrl}/file/${file_id}`;
+
     return new Response(JSON.stringify({
       success: true,
       file_id,
-      url: `/file/${file_id}`
+      url: fileUrl
     }), {
       status: 200,
       headers: { 'Content-Type': 'application/json' }
@@ -63,16 +68,4 @@ export async function onRequest(context) {
       headers: { 'Content-Type': 'application/json' }
     });
   }
-}
-
-// 提取 file_id
-function extractFileId(result) {
-  if (result.photo) {
-    // 取最大尺寸的 file_id
-    return result.photo.reduce((prev, curr) => (prev.file_size > curr.file_size ? prev : curr)).file_id;
-  }
-  if (result.document) return result.document.file_id;
-  if (result.video) return result.video.file_id;
-  if (result.audio) return result.audio.file_id;
-  return null;
 }
