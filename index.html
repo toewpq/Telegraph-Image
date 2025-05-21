@@ -90,7 +90,7 @@
     <div class="file-input">
       <input type="file" id="fileInput" accept="image/*">
     </div>
-    <button class="btn" id="uploadBtn" onclick="uploadImage()">上传图片</button>
+    <button class="btn" id="uploadBtn">上传图片</button>
     <div class="tip">支持 jpg/png/gif/webp，最大 5MB</div>
     <div class="progress-bar" id="progressBar" style="display:none;">
       <div class="progress-inner" id="progressInner"></div>
@@ -167,4 +167,37 @@
             resultDiv.innerHTML = '<span style="color:#e11d48;">上传失败: ' + (data.message || data.error || '未知错误') + '</span>';
           }
         } catch (e) {
-          resultDiv.innerHTML = '<span style="color:#e
+          resultDiv.innerHTML = '<span style="color:#e11d48;">上传失败: 服务器响应异常</span>';
+        }
+      };
+
+      xhr.onerror = function() {
+        uploadBtn.disabled = false;
+        resultDiv.innerHTML = '<span style="color:#e11d48;">上传失败: 网络错误</span>';
+      };
+
+      xhr.send(formData);
+    }
+
+    // 绑定点击事件
+    uploadBtn.addEventListener('click', uploadImage);
+
+    function copyLink(url) {
+      if (navigator.clipboard) {
+        navigator.clipboard.writeText(url).then(() => {
+          alert('已复制到剪贴板');
+        });
+      } else {
+        // 兼容旧浏览器
+        const input = document.createElement('input');
+        input.value = url;
+        document.body.appendChild(input);
+        input.select();
+        document.execCommand('copy');
+        document.body.removeChild(input);
+        alert('已复制到剪贴板');
+      }
+    }
+  </script>
+</body>
+</html>
