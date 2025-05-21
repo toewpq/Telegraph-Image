@@ -120,68 +120,70 @@
       progressInner.style.width = percent + '%';
     }
 
-    async function uploadImage() {
-      resetUI();
-      if (!fileInput.files.length) {
-        resultDiv.innerHTML = '<span style="color:#e11d48;">请选择图片文件</span>';
-        return;
-      }
-      const file = fileInput.files[0];
-      if (file.size > 5 * 1024 * 1024) {
-        resultDiv.innerHTML = '<span style="color:#e11d48;">图片不能超过 5MB</span>';
-        return;
-      }
-      uploadBtn.disabled = true;
-      showProgress(10);
-      resultDiv.innerHTML = '上传中...';
+async function uploadImage() {
+  resetUI();
+  if (!fileInput.files.length) {
+    resultDiv.innerHTML = '<span style="color:#e11d48;">请选择图片文件</span>';
+    return;
+  }
+  const file = fileInput.files[0];
+  if (file.size > 5 * 1024 * 1024) {
+    resultDiv.innerHTML = '<span style="color:#e11d48;">图片不能超过 5MB</span>';
+    return;
+  }
+  uploadBtn.disabled = true;
+  showProgress(10);
+  resultDiv.innerHTML = '上传中...';
 
-      const formData = new FormData();
-      formData.append('file', file); // 这里将 'image' 改为 'file'
+  const formData = new FormData();
+  formData.append('file', file);
 
-      // 使用 XMLHttpRequest 以便显示上传进度
-      const xhr = new XMLHttpRequest();
-      xhr.open('POST', UPLOAD_API, true);
+  const xhr = new XMLHttpRequest();
+  xhr.open('POST', UPLOAD_API, true);
 
-      xhr.upload.onprogress = function(e) {
-        if (e.lengthComputable) {
-          let percent = Math.round((e.loaded / e.total) * 80) + 10;
-          if (percent > 90) percent = 90;
-          showProgress(percent);
-        }
-      };
-
-      xhr.onload = function() {
-        uploadBtn.disabled = false;
-        showProgress(100);
-        try {
-          const data = JSON.parse(xhr.responseText);
-          if (data.success) {
-            if (data.url) {
-              resultDiv.innerHTML = `
-                <div>上传成功！</div>
-                <a href="${data.url}" target="_blank">${data.url}</a>
-                <button class="btn copy-btn" onclick="copyLink('${data.url}')">复制链接</button>
-                <br>
-                <img src="${data.url}" class="preview-img">
-              `;
-            } else {
-              resultDiv.innerHTML = `<span style="color:#e11d48;">上传成功，但未获取到图片链接</span>`;
-            }
-          } else {
-            resultDiv.innerHTML = '<span style="color:#e11d48;">上传失败: ' + (data.message || data.error || '未知错误') + '</span>';
-          }
-        } catch (e) {
-          resultDiv.innerHTML = '<span style="color:#e11d48;">上传失败: 服务器响应异常</span>';
-        }
-      };
-
-      xhr.onerror = function() {
-        uploadBtn.disabled = false;
-        resultDiv.innerHTML = '<span style="color:#e11d48;">上传失败: 网络错误</span>';
-      };
-
-      xhr.send(formData);
+  xhr.upload.onprogress = function(e) {
+    if (e.lengthComputable) {
+      let percent = Math.round((e.loaded / e.total) * 80) + 10;
+      if (percent > 90) percent = 90;
+      showProgress(percent);
     }
+  };
+
+  xhr.onload = function() {
+    uploadBtn.disabled = false;
+    showProgress(100);
+    try {
+      const data = JSON.parse(xhr.responseText);
+      if (data.success) {
+        if (data.file_id) {
+          // 使用返回的 file_id 构造代理路径
+          const fileProxyUrl = `/file/${data.file_id}.js`;  // 生成代理路径
+          resultDiv.innerHTML = `
+            <div>上传成功！</div>
+            <a href="${fileProxyUrl}" target="_blank">${fileProxyUrl}</a>
+            <button class="btn copy-btn" onclick="copyLink('${fileProxyUrl}')">复制链接</button>
+            <br>
+            <img src="${fileProxyUrl}" class="preview-img">
+          `;
+        } else {
+          resultDiv.innerHTML = `<span style="color:#e11d48;">上传成功，但未获取到图片链接</span>`;
+        }
+      } else {
+        resultDiv.innerHTML = '<span style="color:#e11d48;">上传失败: ' + (data.message || data.error || '未知错误') + '</span>';
+      }
+    } catch (e) {
+      resultDiv.innerHTML = '<span style="color:#e11d48;">上传失败: 服务器响应异常</span>';
+    }
+  };
+
+  xhr.onerror = function() {
+    uploadBtn.disabled = false;
+    resultDiv.innerHTML = '<span style="color:#e11d48;">上传失败: 网络错误</span>';
+  };
+
+  xhr.send(formData);
+}
+
 
     function copyLink(url) {
       if (navigator.clipboard) {
