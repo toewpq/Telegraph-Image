@@ -1,102 +1,63 @@
+// upload.js
 export async function onRequestPost(context) {
-    const { request, env } = context;
+  const { request, env } = context;
 
-    try {
-        const clonedRequest = request.clone();
-        const formData = await clonedRequest.formData();
+  try {
+    const formData = await request.formData();
+    const uploadFile = formData.get('file');
 
-        const uploadFile = formData.get('file');
-        if (!uploadFile) {
-            throw new Error('No file uploaded');
-        }
-
-        const fileName = uploadFile.name;
-        const fileExtension = fileName.split('.').pop().toLowerCase();
-
-        const telegramFormData = new FormData();
-        telegramFormData.append("chat_id", env.TG_Chat_ID);
-
-        let apiEndpoint;
-        if (uploadFile.type.startsWith('image/')) {
-            telegramFormData.append("photo", uploadFile);
-            apiEndpoint = 'sendPhoto';
-        } else if (uploadFile.type.startsWith('audio/')) {
-            telegramFormData.append("audio", uploadFile);
-            apiEndpoint = 'sendAudio';
-        } else if (uploadFile.type.startsWith('video/')) {
-            telegramFormData.append("video", uploadFile);
-            apiEndpoint = 'sendVideo';
-        } else {
-            telegramFormData.append("document", uploadFile);
-            apiEndpoint = 'sendDocument';
-        }
-
-        const result = await sendToTelegram(telegramFormData, apiEndpoint, env);
-
-        if (!result.success) {
-            throw new Error(result.error);
-        }
-
-        const fileId = getFileId(result.data);
-
-        if (!fileId) {
-            throw new Error('Failed to get file ID');
-        }
-
-        // Save file metadata in KV storage
-        if (env.img_url) {
-            await env.img_url.put(`${fileId}.${fileExtension}`, "", {
-                metadata: {
-                    TimeStamp: Date.now(),
-                    ListType: "None",
-                    Label: "None",
-                    liked: false,
-                    fileName: fileName,
-                    fileSize: uploadFile.size,
-                }
-            });
-        }
-
-        return new Response(
-            JSON.stringify([{ 'src': `/file/${fileId}.${fileExtension}` }]),
-            {
-                status: 200,
-                headers: { 'Content-Type': 'application/json' }
-            }
-        );
-    } catch (error) {
-        console.error('Upload error:', error);
-        return new Response(
-            JSON.stringify({ error: error.message }),
-            {
-                status: 500,
-                headers: { 'Content-Type': 'application/json' }
-            }
-        );
+    if (!uploadFile) {
+      return new Response(JSON.stringify({ success: false, message: 'No file uploaded' }), {
+        status: 400,
+        headers: { 'Content-Type': 'application/json' }
+      });
     }
-}
 
-function getFileId(response) {
-    if (!response.ok || !response.result) return null;
-    const result = response.result;
-    if (result.photo) {
-        return result.photo.reduce((prev, current) =>
-            (prev.file_size > current.file_size) ? prev : current
-        ).file_id;
+    // 构造 Telegram API 请求
+    let apiEndpoint, fieldName;
+    if (uploadFile.type.startsWith('image/')) {
+      apiEndpoint = 'sendPhoto';
+      fieldName = 'photo';
+    } else {
+      apiEndpoint = 'sendDocument';
+      fieldName = 'document';
     }
-    if (result.document) return result.document.file_id;
-    if (result.video) return result.video.file_id;
-    if (result.audio) return result.audio.file_id;
 
-    return null;
-}
+    // 构造 Telegram form-data
+    const telegramForm = new FormData();
+    telegramForm.append('chat_id', env.TG_Chat_ID);
+    telegramForm.append(fieldName, uploadFile, uploadFile.name);
 
-async function sendToTelegram(formData, apiEndpoint, env) {
+    // 上传到 Telegram
     const apiUrl = `https://api.telegram.org/bot${env.TG_Bot_Token}/${apiEndpoint}`;
-    const response = await fetch(apiUrl, { method: "POST", body: formData });
-    const responseData = await response.json();
-    if (response.ok) {
-        return { success: true, data: responseData };
+    const tgRes = await fetch(apiUrl, { method: 'POST', body: telegramForm });
+    const tgData = await tgRes.json();
+
+    if (!tgRes.ok || !tgData.ok) {
+      console.error('Telegram upload error:', tgData);  // Log the error for debugging
+      return new Response(
+        JSON.stringify({ success: false, message: tgData.description || 'Upload to Telegram failed' }),
+        { status: 500, headers: { 'Content-Type': 'application/json' } }
+      );
     }
-    return { success: false, error: responseData.description || 'Upload failed' };
+
+    // 提取 file_id
+    const file_id = tgData.result.photo ? tgData.result.photo[0].file_id : tgData.result.document.file_id;
+
+    return new Response(
+      JSON.stringify({
+        success: true,
+        file_id,
+        message: tgData.result
+      }),
+      { status: 200, headers: { 'Content-Type': 'application/json' } }
+    );
+
+  } catch (error) {
+    console.error('Upload failed:', error);  // Log the error for debugging
+    return new Response(JSON.stringify({ success: false, message: error.message }), {
+      status: 500,
+      headers: { 'Content-Type': 'application/json' }
+    });
+  }
 }
