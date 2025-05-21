@@ -90,14 +90,13 @@
     <div class="file-input">
       <input type="file" id="fileInput" accept="image/*">
     </div>
-    <button class="btn" id="uploadBtn">上传图片</button>
+    <button class="btn" id="uploadBtn" onclick="uploadImage()">上传图片</button>
     <div class="tip">支持 jpg/png/gif/webp，最大 5MB</div>
     <div class="progress-bar" id="progressBar" style="display:none;">
       <div class="progress-inner" id="progressInner"></div>
     </div>
     <div class="result" id="result"></div>
   </div>
-
   <script>
     // Cloudflare Pages Functions API 路径
     const UPLOAD_API = '/upload';
@@ -157,12 +156,17 @@
         try {
           const data = JSON.parse(xhr.responseText);
           if (data.success) {
-            resultDiv.innerHTML = `
-              <div>上传成功！</div>
-              <button class="btn copy-btn" onclick="copyLink('${data.file_id}')">复制链接</button>
-              <br>
-              <img src="${data.file_url}" class="preview-img">
-            `;
+            if (data.url) {
+              resultDiv.innerHTML = `
+                <div>上传成功！</div>
+                <a href="${data.url}" target="_blank">${data.url}</a>
+                <button class="btn copy-btn" onclick="copyLink('${data.url}')">复制链接</button>
+                <br>
+                <img src="${data.url}" class="preview-img">
+              `;
+            } else {
+              resultDiv.innerHTML = `<span style="color:#e11d48;">上传成功，但未获取到图片链接</span>`;
+            }
           } else {
             resultDiv.innerHTML = '<span style="color:#e11d48;">上传失败: ' + (data.message || data.error || '未知错误') + '</span>';
           }
@@ -178,9 +182,6 @@
 
       xhr.send(formData);
     }
-
-    // 绑定点击事件
-    uploadBtn.addEventListener('click', uploadImage);
 
     function copyLink(url) {
       if (navigator.clipboard) {
