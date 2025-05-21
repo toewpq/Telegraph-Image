@@ -1,102 +1,134 @@
-export async function onRequest(context) {
+import { errorHandling, telemetryData } from "./utils/middleware";
+
+export async function onRequestPost(context) {
     const { request, env } = context;
 
-    // 处理 GET 请求，返回 400 错误，提示 "请求无效"
-    if (request.method === 'GET') {
-        return new Response(JSON.stringify({ success: false, message: '请求无效' }), {
-            status: 400,
-            headers: { 'Content-Type': 'application/json' }
-        });
-    }
+    try {
+        const clonedRequest = request.clone();
+        const formData = await clonedRequest.formData();
 
-    // 处理 POST 请求，进行文件上传逻辑
-    if (request.method === 'POST') {
-        try {
-            const formData = await request.formData();
-            const uploadFile = formData.get('file');
+        await errorHandling(context);
+        telemetryData(context);
 
-            if (!uploadFile) {
-                return new Response(JSON.stringify({ success: false, message: 'No file uploaded' }), {
-                    status: 400,
-                    headers: { 'Content-Type': 'application/json' }
-                });
-            }
+        const uploadFile = formData.get('file');
+        if (!uploadFile) {
+            throw new Error('No file uploaded');
+        }
 
-            // 选择 Telegram API 端点
-            let apiEndpoint, fieldName;
-            if (uploadFile.type.startsWith('image/')) {
-                apiEndpoint = 'sendPhoto';
-                fieldName = 'photo';
-            } else if (uploadFile.type.startsWith('audio/')) {
-                apiEndpoint = 'sendAudio';
-                fieldName = 'audio';
-            } else if (uploadFile.type.startsWith('video/')) {
-                apiEndpoint = 'sendVideo';
-                fieldName = 'video';
-            } else {
-                apiEndpoint = 'sendDocument';
-                fieldName = 'document';
-            }
+        const fileName = uploadFile.name;
+        const fileExtension = fileName.split('.').pop().toLowerCase();
 
-            // 构造 Telegram form-data
-            const telegramForm = new FormData();
-            telegramForm.append('chat_id', env.TG_Chat_ID);
-            telegramForm.append(fieldName, uploadFile, uploadFile.name);
+        const telegramFormData = new FormData();
+        telegramFormData.append("chat_id", env.TG_Chat_ID);
 
-            // 上传到 Telegram
-            const apiUrl = `https://api.telegram.org/bot${env.TG_Bot_Token}/${apiEndpoint}`;
-            const tgRes = await fetch(apiUrl, { method: "POST", body: telegramForm });
-            const tgData = await tgRes.json();
+        // 根据文件类型选择合适的上传方式
+        let apiEndpoint;
+        if (uploadFile.type.startsWith('image/')) {
+            telegramFormData.append("photo", uploadFile);
+            apiEndpoint = 'sendPhoto';
+        } else if (uploadFile.type.startsWith('audio/')) {
+            telegramFormData.append("audio", uploadFile);
+            apiEndpoint = 'sendAudio';
+        } else if (uploadFile.type.startsWith('video/')) {
+            telegramFormData.append("video", uploadFile);
+            apiEndpoint = 'sendVideo';
+        } else {
+            telegramFormData.append("document", uploadFile);
+            apiEndpoint = 'sendDocument';
+        }
 
-            if (!tgRes.ok || !tgData.ok) {
-                return new Response(JSON.stringify({ success: false, message: tgData.description || 'Upload to Telegram failed' }), {
-                    status: 500,
-                    headers: { 'Content-Type': 'application/json' }
-                });
-            }
+        const result = await sendToTelegram(telegramFormData, apiEndpoint, env);
 
-            // 获取 file_id
-            const file_id = extractFileId(tgData.result);
+        if (!result.success) {
+            throw new Error(result.error);
+        }
 
-            // 通过 getFile API 获取 file_path
-            let file_url = null;
-            if (file_id) {
-                const getFileUrl = `https://api.telegram.org/bot${env.TG_Bot_Token}/getFile?file_id=${file_id}`;
-                const getFileRes = await fetch(getFileUrl);
-                const getFileData = await getFileRes.json();
-                if (getFileData.ok && getFileData.result && getFileData.result.file_path) {
-                    file_url = `https://api.telegram.org/file/bot${env.TG_Bot_Token}/${getFileData.result.file_path}`;
+        const fileId = getFileId(result.data);
+
+        if (!fileId) {
+            throw new Error('Failed to get file ID');
+        }
+
+        // 将文件信息保存到 KV 存储
+        if (env.img_url) {
+            await env.img_url.put(`${fileId}.${fileExtension}`, "", {
+                metadata: {
+                    TimeStamp: Date.now(),
+                    ListType: "None",
+                    Label: "None",
+                    liked: false,
+                    fileName: fileName,
+                    fileSize: uploadFile.size,
                 }
-            }
-
-            // 返回 file_id 及图片直链 url
-            return new Response(JSON.stringify({
-                success: true,
-                file_id,
-                url: file_url,
-                message: tgData.result
-            }), {
-                status: 200,
-                headers: { 'Content-Type': 'application/json' }
-            });
-
-        } catch (error) {
-            return new Response(JSON.stringify({ success: false, message: error.message }), {
-                status: 500,
-                headers: { 'Content-Type': 'application/json' }
             });
         }
+
+        return new Response(
+            JSON.stringify([{ 'src': `/file/${fileId}.${fileExtension}` }]),
+            {
+                status: 200,
+                headers: { 'Content-Type': 'application/json' }
+            }
+        );
+    } catch (error) {
+        console.error('Upload error:', error);
+        return new Response(
+            JSON.stringify({ error: error.message }),
+            {
+                status: 500,
+                headers: { 'Content-Type': 'application/json' }
+            }
+        );
     }
 }
 
-// 提取 file_id
-function extractFileId(result) {
+function getFileId(response) {
+    if (!response.ok || !response.result) return null;
+
+    const result = response.result;
     if (result.photo) {
-        // 取最大尺寸的 file_id
-        return result.photo.reduce((prev, curr) => (prev.file_size > curr.file_size ? prev : curr)).file_id;
+        return result.photo.reduce((prev, current) =>
+            (prev.file_size > current.file_size) ? prev : current
+        ).file_id;
     }
     if (result.document) return result.document.file_id;
     if (result.video) return result.video.file_id;
     if (result.audio) return result.audio.file_id;
+
     return null;
+}
+
+async function sendToTelegram(formData, apiEndpoint, env, retryCount = 0) {
+    const MAX_RETRIES = 2;
+    const apiUrl = `https://api.telegram.org/bot${env.TG_Bot_Token}/${apiEndpoint}`;
+
+    try {
+        const response = await fetch(apiUrl, { method: "POST", body: formData });
+        const responseData = await response.json();
+
+        if (response.ok) {
+            return { success: true, data: responseData };
+        }
+
+        // 图片上传失败时转为文档方式重试
+        if (retryCount < MAX_RETRIES && apiEndpoint === 'sendPhoto') {
+            console.log('Retrying image as document...');
+            const newFormData = new FormData();
+            newFormData.append('chat_id', formData.get('chat_id'));
+            newFormData.append('document', formData.get('photo'));
+            return await sendToTelegram(newFormData, 'sendDocument', env, retryCount + 1);
+        }
+
+        return {
+            success: false,
+            error: responseData.description || 'Upload to Telegram failed'
+        };
+    } catch (error) {
+        console.error('Network error:', error);
+        if (retryCount < MAX_RETRIES) {
+            await new Promise(resolve => setTimeout(resolve, 1000 * (retryCount + 1)));
+            return await sendToTelegram(formData, apiEndpoint, env, retryCount + 1);
+        }
+        return { success: false, error: 'Network error occurred' };
+    }
 }
