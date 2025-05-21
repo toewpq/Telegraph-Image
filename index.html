@@ -88,9 +88,9 @@
   <div class="container">
     <h2>Telegraph-Image 免费图床</h2>
     <div class="file-input">
-      <input type="file" id="fileInput" accept="image/*">
+      <input type="file" id="fileInput" accept="image/*,video/*,audio/*">
     </div>
-    <button class="btn" id="uploadBtn" onclick="uploadImage()">上传图片</button>
+    <button class="btn" id="uploadBtn" onclick="uploadImage()">上传文件</button>
     <div class="tip">支持 jpg/png/gif/webp，最大 5MB</div>
     <div class="progress-bar" id="progressBar" style="display:none;">
       <div class="progress-inner" id="progressInner"></div>
@@ -123,12 +123,12 @@
     async function uploadImage() {
       resetUI();
       if (!fileInput.files.length) {
-        resultDiv.innerHTML = '<span style="color:#e11d48;">请选择图片文件</span>';
+        resultDiv.innerHTML = '<span style="color:#e11d48;">请选择文件</span>';
         return;
       }
       const file = fileInput.files[0];
       if (file.size > 5 * 1024 * 1024) {
-        resultDiv.innerHTML = '<span style="color:#e11d48;">图片不能超过 5MB</span>';
+        resultDiv.innerHTML = '<span style="color:#e11d48;">文件不能超过 5MB</span>';
         return;
       }
       uploadBtn.disabled = true;
@@ -155,9 +155,9 @@
         try {
           const data = JSON.parse(xhr.responseText);
           if (data.success) {
-            if (data.file_id) {
-              // 通过 proxy.js 返回的文件 URL
-              const fileUrl = `/file/${data.file_id}`;
+            if (data.src) {
+              // 通过 API 返回的文件 URL
+              const fileUrl = data.src;
               resultDiv.innerHTML = `
                 <div>上传成功！</div>
                 <a href="${fileUrl}" target="_blank">${fileUrl}</a>
@@ -166,7 +166,7 @@
                 <img src="${fileUrl}" class="preview-img">
               `;
             } else {
-              resultDiv.innerHTML = `<span style="color:#e11d48;">上传成功，但未获取到图片链接</span>`;
+              resultDiv.innerHTML = `<span style="color:#e11d48;">上传成功，但未获取到文件链接</span>`;
             }
           } else {
             resultDiv.innerHTML = '<span style="color:#e11d48;">上传失败: ' + (data.message || data.error || '未知错误') + '</span>';
