@@ -155,7 +155,8 @@
         try {
           const data = JSON.parse(xhr.responseText);
           if (Array.isArray(data) && data[0]?.src) {
-            const url = data[0].src;
+            const host = window.location.origin;
+            const url = host + data[0].src;
             const ext = url.split('.').pop().toLowerCase();
             let preview = '';
 
@@ -168,11 +169,15 @@
             }
 
             resultDiv.innerHTML = `
-              <div>上传成功！</div>
-              <a href="${url}" target="_blank">${url}</a>
+              <div style="margin-bottom: 10px; font-weight: 500; color: #059669;">上传成功！</div>
+              <div style="display: flex; flex-direction: column; align-items: flex-start; gap: 8px;">
+                <a href="${url}" target="_blank" style="color: #2563eb; word-break: break-all;">${url}</a>
               <button class="btn copy-btn" onclick="copyLink('${url}')">复制链接</button>
-              <br>${preview}
-            `;
+              </div>
+              <div>${preview}</div>
+`;
+
+
           } else {
             resultDiv.innerHTML = '<span style="color:#e11d48;">上传失败：未获取到返回链接</span>';
           }
