@@ -1,36 +1,51 @@
 export async function onRequest(context) {
-    const { id } = context.params; // 获取 file_id，从 URL 参数中提取
+    const { request, env } = context;
+    const { id } = context.params;  // 获取文件的 ID
 
     try {
-        const db = context.env.D1_DATABASE;
-        
-        // 查询数据库，使用 file_id 查找文件 URL
-        const result = await db.prepare('SELECT url FROM files WHERE file_id = ?').bind(id).first();
+        // 使用 Telegram API 获取文件路径
+        const getFileUrl = `https://api.telegram.org/bot${env.TG_Bot_Token}/getFile?file_id=${id}`;
+        const fileRes = await fetch(getFileUrl);
+        const fileData = await fileRes.json();
 
-        if (!result) {
-            // 如果没有找到对应的 file_id，返回 404 错误
-            return new Response('文件未找到', { status: 404 });
+        if (!fileRes.ok || !fileData.ok || !fileData.result) {
+            return new Response(JSON.stringify({ success: false, message: '无法获取文件信息' }), {
+                status: 400,
+                headers: { 'Content-Type': 'application/json' }
+            });
         }
 
-        // 使用代理请求来获取文件内容
-        const fileUrl = result.url; // Telegram 文件的 URL
-        const fileRes = await fetch(fileUrl); // 获取文件内容
-        
-        // 检查文件是否成功获取
-        if (!fileRes.ok) {
-            return new Response('无法获取文件', { status: 500 });
+        // 获取文件路径
+        const filePath = fileData.result.file_path;
+        const fileUrl = `https://api.telegram.org/file/bot${env.TG_Bot_Token}/${filePath}`;
+
+        // 转发请求，获取文件内容
+        const fileContentRes = await fetch(fileUrl);
+        if (!fileContentRes.ok) {
+            return new Response(JSON.stringify({ success: false, message: '无法下载文件' }), {
+                status: 400,
+                headers: { 'Content-Type': 'application/json' }
+            });
         }
 
-        // 返回文件内容并代理至客户端
-        const contentType = fileRes.headers.get('Content-Type');
-        return new Response(fileRes.body, {
+        // 获取文件的 MIME 类型
+        const contentType = fileContentRes.headers.get('Content-Type');
+
+        // 返回文件内容
+        const fileContent = await fileContentRes.blob();
+
+        return new Response(fileContent.stream(), {
             status: 200,
             headers: {
-                'Content-Type': contentType, // 保持原始文件类型
+                'Content-Type': contentType,
+                'Cache-Control': 'public, max-age=86400'  // 设置缓存时间，具体根据需要调整
             }
         });
 
-    } catch (e) {
-        return new Response('服务器错误', { status: 500 });
+    } catch (error) {
+        return new Response(JSON.stringify({ success: false, message: error.message }), {
+            status: 500,
+            headers: { 'Content-Type': 'application/json' }
+        });
     }
 }
