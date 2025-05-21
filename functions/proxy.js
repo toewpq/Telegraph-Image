@@ -1,3 +1,4 @@
+// proxy.js
 export async function onRequest(context) {
   const { request, env } = context;
 
@@ -6,7 +7,7 @@ export async function onRequest(context) {
     const file_id = url.pathname.split('/')[1];  // 获取 file_id
 
     if (!file_id) {
-      return new Response(JSON.stringify({ success: false, message: '没有提供 file_id' }), {
+      return new Response(JSON.stringify({ success: false, message: 'No file_id provided' }), {
         status: 400,
         headers: { 'Content-Type': 'application/json' }
       });
@@ -18,27 +19,26 @@ export async function onRequest(context) {
     const getFileData = await getFileRes.json();
 
     if (!getFileRes.ok || !getFileData.ok || !getFileData.result || !getFileData.result.file_path) {
-      return new Response(JSON.stringify({ success: false, message: '获取文件失败' }), {
+      return new Response(JSON.stringify({ success: false, message: 'Failed to retrieve file' }), {
         status: 500,
         headers: { 'Content-Type': 'application/json' }
       });
     }
 
     const file_path = getFileData.result.file_path;
-    const file_extension = file_path.split('.').pop(); // 获取文件扩展名
     const file_url = `https://api.telegram.org/file/bot${env.TG_Bot_Token}/${file_path}`;  // 构建文件 URL
 
     // 获取文件内容
     const fileRes = await fetch(file_url);
 
     if (!fileRes.ok) {
-      return new Response(JSON.stringify({ success: false, message: '从 Telegram 获取文件失败' }), {
+      return new Response(JSON.stringify({ success: false, message: 'Failed to fetch file from Telegram' }), {
         status: 500,
         headers: { 'Content-Type': 'application/json' }
       });
     }
 
-    // 返回文件内容，并添加 CORS 头部允许跨域请求
+    // 返回文件内容
     const headers = new Headers();
     headers.set('Access-Control-Allow-Origin', '*');  // 允许所有域名的跨域请求
     headers.set('Content-Type', fileRes.headers.get('Content-Type') || 'application/octet-stream');
