@@ -88,17 +88,16 @@
   <div class="container">
     <h2>Telegraph-Image 免费图床</h2>
     <div class="file-input">
-      <input type="file" id="fileInput" accept="image/*">
+      <input type="file" id="fileInput">
     </div>
-    <button class="btn" id="uploadBtn" onclick="uploadImage()">上传图片</button>
-    <div class="tip">支持 jpg/png/gif/webp，最大 5MB</div>
+    <button class="btn" id="uploadBtn" onclick="uploadFile()">上传文件</button>
+    <div class="tip">支持图片/音频/视频/文档，最大 5MB</div>
     <div class="progress-bar" id="progressBar" style="display:none;">
       <div class="progress-inner" id="progressInner"></div>
     </div>
     <div class="result" id="result"></div>
   </div>
   <script>
-    // Cloudflare Pages Functions API 路径
     const UPLOAD_API = '/upload';
 
     const fileInput = document.getElementById('fileInput');
@@ -120,70 +119,75 @@
       progressInner.style.width = percent + '%';
     }
 
-async function uploadImage() {
-  resetUI();
-  if (!fileInput.files.length) {
-    resultDiv.innerHTML = '<span style="color:#e11d48;">请选择图片文件</span>';
-    return;
-  }
-  const file = fileInput.files[0];
-  if (file.size > 5 * 1024 * 1024) {
-    resultDiv.innerHTML = '<span style="color:#e11d48;">图片不能超过 5MB</span>';
-    return;
-  }
-  uploadBtn.disabled = true;
-  showProgress(10);
-  resultDiv.innerHTML = '上传中...';
-
-  const formData = new FormData();
-  formData.append('file', file);
-
-  const xhr = new XMLHttpRequest();
-  xhr.open('POST', UPLOAD_API, true);
-
-  xhr.upload.onprogress = function(e) {
-    if (e.lengthComputable) {
-      let percent = Math.round((e.loaded / e.total) * 80) + 10;
-      if (percent > 90) percent = 90;
-      showProgress(percent);
-    }
-  };
-
-  xhr.onload = function() {
-    uploadBtn.disabled = false;
-    showProgress(100);
-    try {
-      const data = JSON.parse(xhr.responseText);
-      if (data.success) {
-        if (data.file_id) {
-          // 使用返回的 file_id 构造代理路径
-          const fileProxyUrl = `/file/${data.file_id}.js`;  // 生成代理路径
-          resultDiv.innerHTML = `
-            <div>上传成功！</div>
-            <a href="${fileProxyUrl}" target="_blank">${fileProxyUrl}</a>
-            <button class="btn copy-btn" onclick="copyLink('${fileProxyUrl}')">复制链接</button>
-            <br>
-            <img src="${fileProxyUrl}" class="preview-img">
-          `;
-        } else {
-          resultDiv.innerHTML = `<span style="color:#e11d48;">上传成功，但未获取到图片链接</span>`;
-        }
-      } else {
-        resultDiv.innerHTML = '<span style="color:#e11d48;">上传失败: ' + (data.message || data.error || '未知错误') + '</span>';
+    async function uploadFile() {
+      resetUI();
+      if (!fileInput.files.length) {
+        resultDiv.innerHTML = '<span style="color:#e11d48;">请选择文件</span>';
+        return;
       }
-    } catch (e) {
-      resultDiv.innerHTML = '<span style="color:#e11d48;">上传失败: 服务器响应异常</span>';
+      const file = fileInput.files[0];
+      if (file.size > 5 * 1024 * 1024) {
+        resultDiv.innerHTML = '<span style="color:#e11d48;">文件不能超过 5MB</span>';
+        return;
+      }
+
+      uploadBtn.disabled = true;
+      showProgress(10);
+      resultDiv.innerHTML = '上传中...';
+
+      const formData = new FormData();
+      formData.append('file', file);
+
+      const xhr = new XMLHttpRequest();
+      xhr.open('POST', UPLOAD_API, true);
+
+      xhr.upload.onprogress = function(e) {
+        if (e.lengthComputable) {
+          let percent = Math.round((e.loaded / e.total) * 80) + 10;
+          if (percent > 90) percent = 90;
+          showProgress(percent);
+        }
+      };
+
+      xhr.onload = function() {
+        uploadBtn.disabled = false;
+        showProgress(100);
+        try {
+          const data = JSON.parse(xhr.responseText);
+          if (Array.isArray(data) && data[0]?.src) {
+            const url = data[0].src;
+            const ext = url.split('.').pop().toLowerCase();
+            let preview = '';
+
+            if (['jpg', 'jpeg', 'png', 'gif', 'webp'].includes(ext)) {
+              preview = `<img src="${url}" class="preview-img">`;
+            } else if (['mp4', 'webm', 'ogg'].includes(ext)) {
+              preview = `<video controls class="preview-img" src="${url}"></video>`;
+            } else if (['mp3', 'wav', 'aac'].includes(ext)) {
+              preview = `<audio controls class="preview-img" src="${url}"></audio>`;
+            }
+
+            resultDiv.innerHTML = `
+              <div>上传成功！</div>
+              <a href="${url}" target="_blank">${url}</a>
+              <button class="btn copy-btn" onclick="copyLink('${url}')">复制链接</button>
+              <br>${preview}
+            `;
+          } else {
+            resultDiv.innerHTML = '<span style="color:#e11d48;">上传失败：未获取到返回链接</span>';
+          }
+        } catch (e) {
+          resultDiv.innerHTML = '<span style="color:#e11d48;">上传失败：响应格式错误</span>';
+        }
+      };
+
+      xhr.onerror = function() {
+        uploadBtn.disabled = false;
+        resultDiv.innerHTML = '<span style="color:#e11d48;">上传失败：网络错误</span>';
+      };
+
+      xhr.send(formData);
     }
-  };
-
-  xhr.onerror = function() {
-    uploadBtn.disabled = false;
-    resultDiv.innerHTML = '<span style="color:#e11d48;">上传失败: 网络错误</span>';
-  };
-
-  xhr.send(formData);
-}
-
 
     function copyLink(url) {
       if (navigator.clipboard) {
@@ -191,7 +195,6 @@ async function uploadImage() {
           alert('已复制到剪贴板');
         });
       } else {
-        // 兼容旧浏览器
         const input = document.createElement('input');
         input.value = url;
         document.body.appendChild(input);
