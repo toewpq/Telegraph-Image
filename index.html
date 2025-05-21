@@ -97,6 +97,7 @@
     </div>
     <div class="result" id="result"></div>
   </div>
+
   <script>
     // Cloudflare Pages Functions API 路径
     const UPLOAD_API = '/upload';
@@ -156,49 +157,14 @@
         try {
           const data = JSON.parse(xhr.responseText);
           if (data.success) {
-            if (data.url) {
-              resultDiv.innerHTML = `
-                <div>上传成功！</div>
-                <a href="${data.url}" target="_blank">${data.url}</a>
-                <button class="btn copy-btn" onclick="copyLink('${data.url}')">复制链接</button>
-                <br>
-                <img src="${data.url}" class="preview-img">
-              `;
-            } else {
-              resultDiv.innerHTML = `<span style="color:#e11d48;">上传成功，但未获取到图片链接</span>`;
-            }
+            resultDiv.innerHTML = `
+              <div>上传成功！</div>
+              <button class="btn copy-btn" onclick="copyLink('${data.file_id}')">复制链接</button>
+              <br>
+              <img src="${data.file_url}" class="preview-img">
+            `;
           } else {
             resultDiv.innerHTML = '<span style="color:#e11d48;">上传失败: ' + (data.message || data.error || '未知错误') + '</span>';
           }
         } catch (e) {
-          resultDiv.innerHTML = '<span style="color:#e11d48;">上传失败: 服务器响应异常</span>';
-        }
-      };
-
-      xhr.onerror = function() {
-        uploadBtn.disabled = false;
-        resultDiv.innerHTML = '<span style="color:#e11d48;">上传失败: 网络错误</span>';
-      };
-
-      xhr.send(formData);
-    }
-
-    function copyLink(url) {
-      if (navigator.clipboard) {
-        navigator.clipboard.writeText(url).then(() => {
-          alert('已复制到剪贴板');
-        });
-      } else {
-        // 兼容旧浏览器
-        const input = document.createElement('input');
-        input.value = url;
-        document.body.appendChild(input);
-        input.select();
-        document.execCommand('copy');
-        document.body.removeChild(input);
-        alert('已复制到剪贴板');
-      }
-    }
-  </script>
-</body>
-</html>
+          resultDiv.innerHTML = '<span style="color:#e
