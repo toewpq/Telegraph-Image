@@ -12,18 +12,15 @@ export async function onRequestPost(context) {
             });
         }
 
-        // 获取文件类型
-        const fileType = uploadFile.type;
-
-        // 选择 Telegram API 端点和字段名称
+        // 选择 Telegram API 端点
         let apiEndpoint, fieldName;
-        if (fileType.startsWith('image/')) {
+        if (uploadFile.type.startsWith('image/')) {
             apiEndpoint = 'sendPhoto';
             fieldName = 'photo';
-        } else if (fileType.startsWith('audio/')) {
+        } else if (uploadFile.type.startsWith('audio/')) {
             apiEndpoint = 'sendAudio';
             fieldName = 'audio';
-        } else if (fileType.startsWith('video/')) {
+        } else if (uploadFile.type.startsWith('video/')) {
             apiEndpoint = 'sendVideo';
             fieldName = 'video';
         } else {
@@ -62,19 +59,18 @@ export async function onRequestPost(context) {
             }
         }
 
-        // 存储 file_id、文件类型和 URL 到 D1
+        // 存储 file_id 和 URL 到 D1 数据库
         const db = env.D1_DATABASE; // D1 数据库实例
         await db.prepare(`
-            INSERT INTO files (file_id, file_type, url) 
-            VALUES (?, ?, ?)
-        `).bind(file_id, fileType, file_url).run();
+            INSERT INTO files (file_id, url) 
+            VALUES (?, ?)
+        `).bind(file_id, file_url).run();
 
         // 返回 file_id 和 URL
         return new Response(JSON.stringify({
             success: true,
             file_id,
-            file_type: fileType, // 返回文件类型
-            url: file_url,
+            url: `/file/${file_id}`, // 使用反向代理路径
             message: tgData.result
         }), {
             status: 200,
