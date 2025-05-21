@@ -25,7 +25,8 @@ export async function onRequest(context) {
     }
 
     const file_path = getFileData.result.file_path;
-    const file_url = `https://api.telegram.org/file/bot${env.TG_Bot_Token}/${file_path}`;  // 构建真实的文件 URL
+    const file_extension = file_path.split('.').pop(); // 获取文件扩展名
+    const file_url = `https://api.telegram.org/file/bot${env.TG_Bot_Token}/${file_path}`;  // 构建文件 URL
 
     // 获取文件内容
     const fileRes = await fetch(file_url);
@@ -37,13 +38,13 @@ export async function onRequest(context) {
       });
     }
 
-    // 返回文件内容
-    return new Response(fileRes.body, {
-      headers: {
-        'Content-Type': fileRes.headers.get('Content-Type') || 'application/octet-stream', // 使用正确的文件类型
-        'Cache-Control': 'max-age=31536000'  // 长时间缓存
-      }
-    });
+    // 返回文件内容，并添加 CORS 头部允许跨域请求
+    const headers = new Headers();
+    headers.set('Access-Control-Allow-Origin', '*');  // 允许所有域名的跨域请求
+    headers.set('Content-Type', fileRes.headers.get('Content-Type') || 'application/octet-stream');
+    headers.set('Cache-Control', 'max-age=31536000');  // 长时间缓存
+
+    return new Response(fileRes.body, { headers });
 
   } catch (error) {
     return new Response(JSON.stringify({ success: false, message: error.message }), {
