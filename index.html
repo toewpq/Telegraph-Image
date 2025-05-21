@@ -99,7 +99,7 @@
   </div>
   <script>
     // Cloudflare Pages Functions API 路径
-    const UPLOAD_API = '/upload';
+    const UPLOAD_API = '/upload'; // 假设 upload.js 处理上传的 API 路径
 
     const fileInput = document.getElementById('fileInput');
     const uploadBtn = document.getElementById('uploadBtn');
@@ -157,12 +157,14 @@
           const data = JSON.parse(xhr.responseText);
           if (data.success) {
             if (data.url) {
+              // 通过 proxy.js 返回的文件 URL
+              const fileUrl = `/file/${data.file_id}`;  // 这里根据反向代理的路由构建文件 URL
               resultDiv.innerHTML = `
                 <div>上传成功！</div>
-                <a href="${data.url}" target="_blank">${data.url}</a>
-                <button class="btn copy-btn" onclick="copyLink('${data.url}')">复制链接</button>
+                <a href="${fileUrl}" target="_blank">${fileUrl}</a>
+                <button class="btn copy-btn" onclick="copyLink('${fileUrl}')">复制链接</button>
                 <br>
-                <img src="${data.url}" class="preview-img">
+                <img src="${fileUrl}" class="preview-img">
               `;
             } else {
               resultDiv.innerHTML = `<span style="color:#e11d48;">上传成功，但未获取到图片链接</span>`;
