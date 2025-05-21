@@ -8,7 +8,11 @@ export async function onRequest(context) {
         const fileRes = await fetch(getFileUrl);
         const fileData = await fileRes.json();
 
+        console.log("Telegram API 返回的文件信息：", fileData);  // 输出调试信息
+
+        // 如果 API 请求失败，返回错误信息
         if (!fileRes.ok || !fileData.ok || !fileData.result) {
+            console.error('无法获取文件信息:', fileData);  // 输出错误信息
             return new Response(JSON.stringify({ success: false, message: '无法获取文件信息' }), {
                 status: 400,
                 headers: { 'Content-Type': 'application/json' }
@@ -22,6 +26,7 @@ export async function onRequest(context) {
         // 转发请求，获取文件内容
         const fileContentRes = await fetch(fileUrl);
         if (!fileContentRes.ok) {
+            console.error('无法下载文件:', fileContentRes);  // 输出错误信息
             return new Response(JSON.stringify({ success: false, message: '无法下载文件' }), {
                 status: 400,
                 headers: { 'Content-Type': 'application/json' }
@@ -43,6 +48,7 @@ export async function onRequest(context) {
         });
 
     } catch (error) {
+        console.error('发生错误:', error);  // 输出错误信息
         return new Response(JSON.stringify({ success: false, message: error.message }), {
             status: 500,
             headers: { 'Content-Type': 'application/json' }
