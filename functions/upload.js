@@ -59,8 +59,16 @@ export async function onRequestPost(context) {
             }
         }
 
-        // 存储 file_id 和 URL 到 D1 数据库
+        // 确保获取到 D1 数据库实例
         const db = env.D1_DATABASE; // D1 数据库实例
+        if (!db) {
+            return new Response(JSON.stringify({ success: false, message: 'Database instance not available' }), {
+                status: 500,
+                headers: { 'Content-Type': 'application/json' }
+            });
+        }
+
+        // 存储 file_id 和 URL 到 D1 数据库
         await db.prepare(`
             INSERT INTO files (file_id, url) 
             VALUES (?, ?)
