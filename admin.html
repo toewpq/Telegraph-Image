@@ -13,6 +13,7 @@
     tr:hover { background: #f0f0f0; }
     .delete-btn { color: red; cursor: pointer; }
     .topbar { display: flex; justify-content: space-between; align-items: center; }
+    .error { color: red; margin-top: 1rem; }
   </style>
 </head>
 <body>
@@ -37,54 +38,71 @@
     <tbody></tbody>
   </table>
 
+  <div id="errorBox" class="error"></div>
+
   <script>
     async function checkLogin() {
-      const res = await fetch("/functions/manage/check");
-      const data = await res.json();
-      if (!data.loggedIn) {
+      try {
+        const res = await fetch("/functions/manage/check");
+        if (!res.ok) throw new Error("未登录");
+        const data = await res.json();
+        if (!data.loggedIn) throw new Error("未登录");
+      } catch (err) {
         alert("未登录，请先登录！");
-        window.location.href = "/login.html"; // 可自行更换为实际登录页面
+        window.location.href = "/login.html";
       }
     }
 
     async function loadImages() {
       const keyword = document.getElementById('searchInput').value.trim();
-      const res = await fetch(`/functions/manage/list?q=${encodeURIComponent(keyword)}`);
-      const data = await res.json();
+      const errorBox = document.getElementById('errorBox');
+      errorBox.textContent = "";
+      try {
+        const res = await fetch(`/functions/manage/list?q=${encodeURIComponent(keyword)}`);
+        if (!res.ok) throw new Error("未登录或请求失败");
+        const data = await res.json();
 
-      const tbody = document.querySelector('#imageTable tbody');
-      tbody.innerHTML = '';
+        const tbody = document.querySelector('#imageTable tbody');
+        tbody.innerHTML = '';
 
-      data.forEach(item => {
-        const tr = document.createElement('tr');
-        tr.innerHTML = `
-          <td>${item.name}</td>
-          <td>${new Date(item.timestamp * 1000).toLocaleString()}</td>
-          <td>${item.list_type}</td>
-          <td>${item.rating_label}</td>
-          <td><span class="delete-btn" onclick="deleteImage(${item.id})">删除</span></td>
-        `;
-        tbody.appendChild(tr);
-      });
+        data.forEach(item => {
+          const tr = document.createElement('tr');
+          tr.innerHTML = `
+            <td>${item.name}</td>
+            <td>${new Date(item.timestamp * 1000).toLocaleString()}</td>
+            <td>${item.list_type}</td>
+            <td>${item.rating_label}</td>
+            <td><span class="delete-btn" onclick="deleteImage(${item.id})">删除</span></td>
+          `;
+          tbody.appendChild(tr);
+        });
+      } catch (err) {
+        errorBox.textContent = "⚠ 加载失败：" + err.message;
+      }
     }
 
     async function deleteImage(id) {
       if (!confirm("确定要删除这张图片吗？")) return;
-      await fetch('/functions/manage/delete', {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ id })
-      });
-      loadImages();
+      try {
+        const res = await fetch('/functions/manage/delete', {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({ id })
+        });
+        if (!res.ok) throw new Error("删除失败，未登录或服务器错误");
+        loadImages();
+      } catch (err) {
+        alert("❌ " + err.message);
+      }
     }
 
     async function logout() {
       await fetch("/functions/manage/logout");
       alert("已退出登录");
-      window.location.href = "/login.html"; // 可自行修改为首页或登录页
+      window.location.href = "/login.html";
     }
 
-    // 页面加载时检查登录状态
+    // 初始化：检查登录状态 → 加载列表
     checkLogin().then(loadImages);
   </script>
 </body>
