@@ -61,12 +61,22 @@ export async function onRequest(context) {
 
   // ** 6. 普通或白名单图片正常访问 **
   const response = await fetch(fileUrl, {
-    method: request.method,
-    headers: request.headers,
-    body: request.body,
-  });
-  return response;
-}
+  method: request.method,
+  headers: request.headers,
+  body: request.body,
+});
+
+// 创建新的响应头，加入 no-store/no-cache
+const newHeaders = new Headers(response.headers);
+newHeaders.set('Cache-Control', 'no-store, no-cache, must-revalidate, proxy-revalidate');
+newHeaders.set('Pragma', 'no-cache');
+newHeaders.set('Expires', '0');
+
+return new Response(response.body, {
+  status: response.status,
+  headers: newHeaders,
+});
+
 
 // -- 工具函数 --
 
