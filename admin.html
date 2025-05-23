@@ -2,70 +2,68 @@
 <html lang="zh">
 <head>
   <meta charset="UTF-8" />
-  <meta name="viewport" content="width=device-width, initial-scale=1.0"/>
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
   <title>Telegraph Image 管理后台</title>
   <style>
-    body { font-family: sans-serif; padding: 2rem; background: #f9f9f9; }
+    body { font-family: sans-serif; background: #f9f9f9; margin: 0; padding: 2rem; }
+    .container { max-width: 720px; margin: auto; }
     .hidden { display: none; }
-    .topbar { display: flex; justify-content: space-between; align-items: center; }
+    h1, h2 { text-align: center; }
     table { width: 100%; border-collapse: collapse; margin-top: 1rem; background: white; }
-    th, td { padding: 0.75rem; border-bottom: 1px solid #ddd; text-align: left; }
+    th, td { padding: 0.75rem; border-bottom: 1px solid #eee; text-align: left; }
     tr:hover { background: #f0f0f0; }
-    .delete-btn { color: red; cursor: pointer; }
-    input, button { padding: 0.5rem; font-size: 1rem; margin: 4px 0; }
-
-    .login-box {
-      max-width: 360px;
-      margin: 60px auto;
-      background: white;
-      padding: 2rem;
-      border-radius: 8px;
-      box-shadow: 0 4px 12px rgba(0,0,0,0.1);
-    }
-    .error { color: red; margin-top: 1rem; text-align: center; }
+    .btn { padding: 0.5rem 1rem; margin: 0.25rem; font-size: 1rem; border: none; cursor: pointer; border-radius: 4px; }
+    .btn-danger { background: #e11d48; color: white; }
+    .btn-primary { background: #3b82f6; color: white; }
+    .btn-outline { background: white; color: #3b82f6; border: 1px solid #3b82f6; }
+    input { padding: 0.5rem; margin-bottom: 1rem; width: 100%; box-sizing: border-box; }
+    .login-box { background: white; padding: 2rem; border-radius: 8px; box-shadow: 0 4px 12px rgba(0,0,0,0.1); }
+    .error { color: red; text-align: center; margin-bottom: 1rem; }
+    .topbar { display: flex; justify-content: space-between; align-items: center; margin-bottom: 1rem; }
   </style>
 </head>
 <body>
-
-  <!-- 登录视图 -->
-  <div id="loginView" class="login-box">
-    <h2>管理员登录</h2>
-    <div class="error" id="errorBox"></div>
-    <input type="text" id="username" placeholder="用户名" />
-    <input type="password" id="password" placeholder="密码" />
-    <button onclick="login()">登录</button>
-  </div>
-
-  <!-- 管理后台视图 -->
-  <div id="adminView" class="hidden">
-    <div class="topbar">
-      <h1>📂 Telegraph Image 管理后台</h1>
-      <button onclick="logout()">退出登录</button>
+  <div class="container">
+    <!-- 登录视图 -->
+    <div id="loginView" class="login-box">
+      <h2>管理员登录</h2>
+      <div class="error" id="errorBox"></div>
+      <input type="text" id="username" placeholder="用户名" />
+      <input type="password" id="password" placeholder="密码" />
+      <button class="btn btn-primary" onclick="login()">登录</button>
     </div>
 
-    <input type="text" id="searchInput" placeholder="输入关键词搜索图片..." />
-    <button onclick="loadImages()">搜索</button>
+    <!-- 管理后台视图 -->
+    <div id="adminView" class="hidden">
+      <div class="topbar">
+        <h1>📂 Telegraph Image 管理后台</h1>
+        <button class="btn btn-outline" onclick="logout()">退出登录</button>
+      </div>
 
-    <table id="imageTable">
-      <thead>
-        <tr>
-          <th>图片名</th>
-          <th>时间戳</th>
-          <th>类型</th>
-          <th>标签</th>
-          <th>操作</th>
-        </tr>
-      </thead>
-      <tbody></tbody>
-    </table>
+      <input type="text" id="searchInput" placeholder="输入关键词搜索图片..." />
+      <button class="btn btn-primary" onclick="loadImages()">搜索</button>
 
-    <div id="adminErrorBox" class="error"></div>
+      <table>
+        <thead>
+          <tr>
+            <th>图片名</th>
+            <th>时间戳</th>
+            <th>类型</th>
+            <th>标签</th>
+            <th>操作</th>
+          </tr>
+        </thead>
+        <tbody id="imageTable"></tbody>
+      </table>
+
+      <div class="error" id="adminErrorBox"></div>
+    </div>
   </div>
 
   <script>
     async function checkLogin() {
       try {
-        const res = await fetch("/manage/check");
+        const res = await fetch("/manage/check", { credentials: "include" });
         if (!res.ok) return false;
         const data = await res.json();
         return data.loggedIn;
@@ -93,7 +91,7 @@
         } else {
           errorBox.textContent = '登录失败，请检查用户名或密码。';
         }
-      } catch (e) {
+      } catch {
         errorBox.textContent = '网络错误，请稍后再试。';
       }
     }
@@ -104,23 +102,26 @@
       errorBox.textContent = '';
 
       try {
-        const res = await fetch(`/manage/list?q=${encodeURIComponent(keyword)}`);
+        const res = await fetch(`/manage/list?q=${encodeURIComponent(keyword)}`, { credentials: "include" });
         if (!res.ok) throw new Error("未登录或请求失败");
-
         const data = await res.json();
-        const tbody = document.querySelector('#imageTable tbody');
+        const tbody = document.getElementById('imageTable');
         tbody.innerHTML = '';
 
         data.forEach(item => {
-          const tr = document.createElement('tr');
-          tr.innerHTML = `
+          const row = document.createElement('tr');
+          row.innerHTML = `
             <td>${item.name}</td>
             <td>${new Date(item.timestamp * 1000).toLocaleString()}</td>
             <td>${item.list_type}</td>
             <td>${item.rating_label}</td>
-            <td><span class="delete-btn" onclick="deleteImage(${item.id})">删除</span></td>
+            <td>
+              <button class="btn btn-outline" onclick="copyLink('${item.name}')">复制链接</button>
+              <button class="btn btn-primary" onclick="whitelist('${item.name}')">白名单</button>
+              <button class="btn btn-danger" onclick="deleteImage(${item.id})">删除</button>
+            </td>
           `;
-          tbody.appendChild(tr);
+          tbody.appendChild(row);
         });
       } catch (err) {
         errorBox.textContent = "⚠ 加载失败：" + err.message;
@@ -133,17 +134,35 @@
         const res = await fetch('/manage/delete', {
           method: 'POST',
           headers: { 'Content-Type': 'application/json' },
-          body: JSON.stringify({ id })
+          body: JSON.stringify({ id }),
+          credentials: "include"
         });
-        if (!res.ok) throw new Error("删除失败，未登录或服务器错误");
+        if (!res.ok) throw new Error("删除失败");
         loadImages();
       } catch (err) {
         alert("❌ " + err.message);
       }
     }
 
+    async function whitelist(name) {
+      if (!confirm("加入白名单？")) return;
+      await fetch(`/manage/whitelist`, {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ name }),
+        credentials: "include"
+      });
+      loadImages();
+    }
+
+    function copyLink(name) {
+      const url = `${location.origin}/file/${name}`;
+      navigator.clipboard.writeText(url);
+      alert("复制成功：" + url);
+    }
+
     async function logout() {
-      await fetch("/manage/logout");
+      await fetch("/manage/logout", { credentials: "include" });
       showLoginView();
     }
 
