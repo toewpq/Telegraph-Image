@@ -1,6 +1,5 @@
 export async function onRequest(context) {
   const { request, env } = context;
-
   const cookie = request.headers.get("Cookie") || "";
   if (!cookie.includes("session=1")) {
     return new Response("Unauthorized", { status: 401 });
@@ -17,6 +16,6 @@ export async function onRequest(context) {
   const { results } = await stmt.all();
 
   return new Response(JSON.stringify(results), {
-    headers: { "Content-Type": "application/json" }
+    headers: { "Content-Type": "application/json" },
   });
 }
