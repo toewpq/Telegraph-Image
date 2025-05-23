@@ -223,16 +223,17 @@
             const ext = url.split('.').pop().toLowerCase();
             let preview = '';
 
-            if (['jpg', 'jpeg', 'png', 'gif', 'webp'].includes(ext)) {
-              preview = `<img src="${url}" class="preview-img"
-                onerror="this.onerror=null;this.style.display='none';document.getElementById('result').insertAdjacentHTML('beforeend','<div style=\'color:#e11d48; margin-top:12px;\'>${getI18n("whitelistPreview")}</div>');">`;
-            } else if (['mp4', 'webm', 'ogg'].includes(ext)) {
-              preview = `<video controls class="preview-img" src="${url}"
-                onerror="this.onerror=null;this.style.display='none';document.getElementById('result').insertAdjacentHTML('beforeend','<div style=\'color:#e11d48; margin-top:12px;\'>${getI18n("whitelistPreview")}</div>');"></video>`;
-            } else if (['mp3', 'wav', 'aac'].includes(ext)) {
-              preview = `<audio controls class="preview-img" src="${url}"
-                onerror="this.onerror=null;this.style.display='none';document.getElementById('result').insertAdjacentHTML('beforeend','<div style=\'color:#e11d48; margin-top:12px;\'>${getI18n("whitelistPreview")}</div>');"></audio>`;
-            }
+if (['jpg', 'jpeg', 'png', 'gif', 'webp'].includes(ext)) {
+  preview = `<img src="${url}" class="preview-img"
+    onerror="this.onerror=null;this.style.display='none';document.getElementById('result').insertAdjacentHTML('beforeend','<div style=\\'color:#e11d48; margin-top:12px;\\'>${getI18n('whitelistPreview')}</div>');">`;
+} else if (['mp4', 'webm', 'ogg'].includes(ext)) {
+  preview = `<video controls class="preview-img" src="${url}"
+    onerror="this.onerror=null;this.style.display='none';document.getElementById('result').insertAdjacentHTML('beforeend','<div style=\\'color:#e11d48; margin-top:12px;\\'>${getI18n('whitelistPreview')}</div>');"></video>`;
+} else if (['mp3', 'wav', 'aac'].includes(ext)) {
+  preview = `<audio controls class="preview-img" src="${url}"
+    onerror="this.onerror=null;this.style.display='none';document.getElementById('result').insertAdjacentHTML('beforeend','<div style=\\'color:#e11d48; margin-top:12px;\\'>${getI18n('whitelistPreview')}</div>');"></audio>`;
+}
+
 
             resultDiv.innerHTML = `
               <div style="margin-bottom: 10px; font-weight: 500; color: #059669;">${getI18n("uploadSuccess")}</div>
