@@ -125,12 +125,16 @@
             <td>${item.list_type}</td>
             <td>${item.rating_label}</td>
             <td style="white-space:normal">
-              <div class="op-buttons">
-                <button class="btn btn-outline" onclick="copyLink('${item.name}')"
-                  title="复制唯一ID：${item.name}">复制链接</button>
-                <button class="btn btn-primary" onclick="whitelist('${item.name}')">白名单</button>
-                <button class="btn btn-danger" onclick="deleteImage(${item.id})">删除</button>
-              </div>
+<div class="op-buttons">
+  <button class="btn btn-outline" onclick="copyLink('${item.name}')"
+    title="复制唯一ID：${item.name}">复制链接</button>
+  ${
+    item.list_type === 'White'
+      ? `<button class="btn btn-danger" onclick="toggleWhitelist('${item.name}', true)">取消白名单</button>`
+      : `<button class="btn btn-primary" onclick="toggleWhitelist('${item.name}', false)">白名单</button>`
+  }
+  <button class="btn btn-danger" onclick="deleteImage(${item.id})">删除</button>
+</div>
               <div class="id-preview" title="唯一ID">${item.name}</div>
             </td>
           `;
@@ -157,16 +161,17 @@
       }
     }
 
-    async function whitelist(name) {
-      if (!confirm("加入白名单？")) return;
-      await fetch(`/manage/whitelist`, {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ name }),
-        credentials: "include"
-      });
-      loadImages();
-    }
+async function toggleWhitelist(name, isRemove) {
+  const msg = isRemove ? "确定移出白名单？" : "确定加入白名单？";
+  if (!confirm(msg)) return;
+  await fetch('/manage/whitelist', {
+    method: 'POST',
+    headers: { 'Content-Type': 'application/json' },
+    body: JSON.stringify({ name, action: isRemove ? "remove" : "add" }),
+    credentials: "include"
+  });
+  loadImages();
+}
 
     function copyLink(name) {
       const url = `${location.origin}/file/${name}`;
