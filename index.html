@@ -34,7 +34,7 @@
       margin: 16px 0;
     }
     .btn {
-      background: #3b82f6;
+      background: #1741a2; /* 蓝色加深，提升对比度 */
       color: #fff;
       border: none;
       padding: 10px 28px;
@@ -46,6 +46,7 @@
     }
     .btn:disabled {
       background: #bcd7fa;
+      color: #666;
       cursor: not-allowed;
     }
     .result {
@@ -59,10 +60,11 @@
       box-shadow: 0 1px 6px rgba(0,0,0,0.07);
     }
     .copy-btn {
-      background: #10b981;
+      background: #12833a; /* 绿色加深 */
       margin-left: 8px;
       padding: 6px 14px;
       font-size: 14px;
+      color: #fff;
     }
     .progress-bar {
       width: 100%;
@@ -74,12 +76,12 @@
     }
     .progress-inner {
       height: 100%;
-      background: #3b82f6;
+      background: #1741a2; /* 蓝色加深 */
       width: 0;
       transition: width 0.3s;
     }
     .tip {
-      color: #888;
+      color: #424242; /* 提高对比度 */
       font-size: 13px;
       margin-top: 8px;
     }
@@ -88,27 +90,44 @@
       top: 16px;
       right: 16px;
     }
+    /* focus outline */
+    input:focus, select:focus, button:focus {
+      outline: 2px solid #1741a2;
+      outline-offset: 2px;
+    }
   </style>
 </head>
 <body>
-  <div class="lang-switcher">
-    <select id="langSwitcher" onchange="switchLang(this.value)">
-      <option value="zh">中文</option>
-      <option value="en">English</option>
-    </select>
-  </div>
+  <!-- 语言切换：添加label关联 -->
+<div class="lang-switcher" style="display: flex; gap: 8px; align-items: center;">
+  <label for="langSwitcher" id="langLabel" style="position:absolute;left:-9999px;">选择语言</label>
+  <select id="langSwitcher" onchange="switchLang(this.value)" aria-labelledby="langLabel">
+    <option value="zh">中文</option>
+    <option value="en">English</option>
+  </select>
+  <!-- 后台管理入口按钮 -->
+  <a href="/admin"
+     id="adminBtn"
+     class="btn"
+     style="padding: 6px 14px; font-size:14px; background: #f59e42; color: #fff;"
+     aria-label="后台管理">后台管理</a>
+</div>
 
-  <div class="container">
-    <h2 data-i18n="uploadTitle">Telegraph-Image 免费图床</h2>
+
+  <div class="container" aria-labelledby="uploadTitle">
+    <h2 data-i18n="uploadTitle" id="uploadTitle">Telegraph-Image 免费图床</h2>
+    <!-- 文件选择框添加label和aria描述 -->
     <div class="file-input">
-      <input type="file" id="fileInput">
+      <label for="fileInput" id="fileInputLabel" style="font-weight:500;margin-bottom:6px;display:block;">选择文件</label>
+      <input type="file" id="fileInput" aria-labelledby="fileInputLabel">
     </div>
-    <button class="btn" id="uploadBtn" onclick="uploadFile()" data-i18n="uploadBtn">上传文件</button>
-    <div class="tip" data-i18n="tip">支持图片/音频/视频/文档，最大 5MB</div>
-    <div class="progress-bar" id="progressBar" style="display:none;">
+    <!-- 上传按钮添加aria-label -->
+    <button class="btn" id="uploadBtn" onclick="uploadFile()" data-i18n="uploadBtn" aria-label="上传文件">上传文件</button>
+    <div class="tip" data-i18n="tip" id="uploadTip">支持图片/音频/视频/文档，最大 5MB</div>
+    <div class="progress-bar" id="progressBar" style="display:none;" aria-hidden="true">
       <div class="progress-inner" id="progressInner"></div>
     </div>
-    <div class="result" id="result"></div>
+    <div class="result" id="result" aria-live="polite"></div>
   </div>
 
   <script>
@@ -134,7 +153,9 @@
         networkError: "上传失败：网络错误",
         copied: "已复制到剪贴板",
         copyLink: "复制链接",
-        whitelistPreview: "图片未在白名单中，暂无法预览。"
+        whitelistPreview: "图片未在白名单中，暂无法预览。",
+        selectFile: "选择文件",
+        selectLang: "选择语言"
       },
       en: {
         uploadTitle: "Telegraph-Image Free Upload",
@@ -149,7 +170,9 @@
         networkError: "Upload failed: Network error",
         copied: "Copied to clipboard",
         copyLink: "Copy Link",
-        whitelistPreview: "This image is not in the whitelist and cannot be previewed."
+        whitelistPreview: "This image is not in the whitelist and cannot be previewed.",
+        selectFile: "Select file",
+        selectLang: "Select language"
       }
     };
 
@@ -163,6 +186,9 @@
           el.textContent = i18nMap[lang][key];
         }
       });
+      // 更新label文本
+      document.getElementById('fileInputLabel').textContent = i18nMap[lang].selectFile;
+      document.getElementById('langLabel').textContent = i18nMap[lang].selectLang;
     }
 
     function getI18n(key) {
@@ -223,23 +249,22 @@
             const ext = url.split('.').pop().toLowerCase();
             let preview = '';
 
-if (['jpg', 'jpeg', 'png', 'gif', 'webp'].includes(ext)) {
-  preview = `<img src="${url}" class="preview-img"
-    onerror="this.onerror=null;this.style.display='none';document.getElementById('result').insertAdjacentHTML('beforeend','<div style=\\'color:#e11d48; margin-top:12px;\\'>${getI18n('whitelistPreview')}</div>');">`;
-} else if (['mp4', 'webm', 'ogg'].includes(ext)) {
-  preview = `<video controls class="preview-img" src="${url}"
-    onerror="this.onerror=null;this.style.display='none';document.getElementById('result').insertAdjacentHTML('beforeend','<div style=\\'color:#e11d48; margin-top:12px;\\'>${getI18n('whitelistPreview')}</div>');"></video>`;
-} else if (['mp3', 'wav', 'aac'].includes(ext)) {
-  preview = `<audio controls class="preview-img" src="${url}"
-    onerror="this.onerror=null;this.style.display='none';document.getElementById('result').insertAdjacentHTML('beforeend','<div style=\\'color:#e11d48; margin-top:12px;\\'>${getI18n('whitelistPreview')}</div>');"></audio>`;
-}
-
+            if (['jpg', 'jpeg', 'png', 'gif', 'webp'].includes(ext)) {
+              preview = `<img src="${url}" class="preview-img"
+                onerror="this.onerror=null;this.style.display='none';document.getElementById('result').insertAdjacentHTML('beforeend','<div style=\\'color:#e11d48; margin-top:12px;\\'>${getI18n('whitelistPreview')}</div>');" alt="图片预览">`;
+            } else if (['mp4', 'webm', 'ogg'].includes(ext)) {
+              preview = `<video controls class="preview-img" src="${url}"
+                onerror="this.onerror=null;this.style.display='none';document.getElementById('result').insertAdjacentHTML('beforeend','<div style=\\'color:#e11d48; margin-top:12px;\\'>${getI18n('whitelistPreview')}</div>');" aria-label="视频预览"></video>`;
+            } else if (['mp3', 'wav', 'aac'].includes(ext)) {
+              preview = `<audio controls class="preview-img" src="${url}"
+                onerror="this.onerror=null;this.style.display='none';document.getElementById('result').insertAdjacentHTML('beforeend','<div style=\\'color:#e11d48; margin-top:12px;\\'>${getI18n('whitelistPreview')}</div>');" aria-label="音频预览"></audio>`;
+            }
 
             resultDiv.innerHTML = `
               <div style="margin-bottom: 10px; font-weight: 500; color: #059669;">${getI18n("uploadSuccess")}</div>
               <div style="display: flex; flex-direction: column; align-items: flex-start; gap: 8px;">
-                <a href="${url}" target="_blank" style="color: #2563eb; word-break: break-all;">${url}</a>
-                <button class="btn copy-btn" onclick="copyLink('${url}')">${getI18n("copyLink")}</button>
+                <a href="${url}" target="_blank" style="color: #1741a2; word-break: break-all;">${url}</a>
+                <button class="btn copy-btn" onclick="copyLink('${url}')" aria-label="${getI18n('copyLink')}">${getI18n("copyLink")}</button>
               </div>
               <div>${preview}</div>
             `;
