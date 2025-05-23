@@ -6,11 +6,11 @@
   <title>Telegraph Image 管理后台</title>
   <style>
     body { font-family: sans-serif; background: #f9f9f9; margin: 0; padding: 2rem; }
-    .container { max-width: 720px; margin: auto; }
+    .container { max-width: 1000px; margin: auto; }
     .hidden { display: none; }
     h1, h2 { text-align: center; }
-    table { width: 100%; border-collapse: collapse; margin-top: 1rem; background: white; }
-    th, td { padding: 0.75rem; border-bottom: 1px solid #eee; text-align: left; }
+    table { width: 100%; border-collapse: collapse; margin-top: 1rem; background: white; table-layout: fixed; }
+    th, td { padding: 0.75rem; border-bottom: 1px solid #eee; text-align: left; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
     tr:hover { background: #f0f0f0; }
     .btn { padding: 0.5rem 1rem; margin: 0.25rem; font-size: 1rem; border: none; cursor: pointer; border-radius: 4px; }
     .btn-danger { background: #e11d48; color: white; }
@@ -19,7 +19,11 @@
     input { padding: 0.5rem; margin-bottom: 1rem; width: 100%; box-sizing: border-box; }
     .login-box { background: white; padding: 2rem; border-radius: 8px; box-shadow: 0 4px 12px rgba(0,0,0,0.1); }
     .error { color: red; text-align: center; margin-bottom: 1rem; }
-    .topbar { display: flex; justify-content: space-between; align-items: center; margin-bottom: 1rem; }
+    .topbar { display: flex; justify-content: space-between; align-items: center; flex-wrap: wrap; gap: 1rem; margin-bottom: 1rem; }
+    @media (max-width: 600px) {
+      .topbar { flex-direction: column; align-items: flex-start; }
+      th, td { font-size: 0.9rem; }
+    }
   </style>
 </head>
 <body>
@@ -46,11 +50,11 @@
       <table>
         <thead>
           <tr>
-            <th>图片名</th>
-            <th>时间戳</th>
-            <th>类型</th>
-            <th>标签</th>
-            <th>操作</th>
+            <th style="width: 40%">图片名</th>
+            <th style="width: 20%">时间戳</th>
+            <th style="width: 10%">类型</th>
+            <th style="width: 10%">标签</th>
+            <th style="width: 20%">操作</th>
           </tr>
         </thead>
         <tbody id="imageTable"></tbody>
@@ -78,8 +82,10 @@
       const errorBox = document.getElementById('errorBox');
 
       try {
-        const res = await fetch(`/manage/login?u=${encodeURIComponent(username)}&p=${encodeURIComponent(password)}`, {
-          method: 'GET',
+        const res = await fetch('/manage/login', {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({ username, password }),
           credentials: 'include'
         });
 
@@ -111,7 +117,7 @@
         data.forEach(item => {
           const row = document.createElement('tr');
           row.innerHTML = `
-            <td>${item.name}</td>
+            <td title="${item.name}">${item.name}</td>
             <td>${new Date(item.timestamp * 1000).toLocaleString()}</td>
             <td>${item.list_type}</td>
             <td>${item.rating_label}</td>
