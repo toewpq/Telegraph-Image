@@ -13,36 +13,25 @@ export async function onRequest(context) {
     }
   }
 
-  const response = await fetch(fileUrl, {
-    method: request.method,
-    headers: request.headers,
-    body: request.body,
-  });
-
-  if (!response.ok) return response;
-
-  const isAdmin = request.headers.get('Referer')?.includes(`${url.origin}/admin`);
-  if (isAdmin) return response;
-
-  // 获取数据库中的元信息
+  // ** 1. 检查数据库记录是否存在，若无则404，确保删除后图片无法访问 **
   let metadata = await getImageMetadata(env.DB, fileId);
-
-  // 如果数据库没有此图片记录，初始化记录
   if (!metadata) {
-    metadata = {
-      file_id: fileId,
-      timestamp: Math.floor(Date.now() / 1000),
-      list_type: "None",
-      rating_label: "None",
-      liked: false,
-    };
-    await saveMetadata(env.DB, metadata); // 新建元数据
+    // 可返回自定义 404 页或提示图片已删除
+    return new Response("图片已被删除", { status: 404 });
+    // 或者：return Response.redirect(`${url.origin}/notfound.html`, 302);
   }
 
-  // 屏蔽策略
-  if (metadata.list_type === "White") {
-    return response;
-  } else if (metadata.list_type === "Block" || metadata.rating_label === "adult") {
+  // ** 2. 管理后台可直接访问所有图片（带Referer /admin） **
+  const isAdmin = request.headers.get('Referer')?.includes(`${url.origin}/admin`);
+  if (isAdmin) return await fetch(fileUrl, { method: request.method, headers: request.headers, body: request.body });
+
+  // ** 3. 白名单模式优先判断：启用后只有白名单可访问 **
+  if (env.WhiteList_Mode === "true" && metadata.list_type !== "White") {
+    return Response.redirect(`${url.origin}/whitelist-on.html`, 302);
+  }
+
+  // ** 4. 普通模式下处理黑名单/成人内容拦截 **
+  if (metadata.list_type === "Block" || metadata.rating_label === "adult") {
     const referer = request.headers.get('Referer');
     const redirectUrl = referer
       ? "https://static-res.pages.dev/teleimage/img-block-compressed.png"
@@ -50,23 +39,16 @@ export async function onRequest(context) {
     return Response.redirect(redirectUrl, 302);
   }
 
-  // 白名单模式：如果启用且未白名单，则拦截
-  if (env.WhiteList_Mode === "true") {
-    return Response.redirect(`${url.origin}/whitelist-on.html`, 302);
-  }
-
-  // 内容审查逻辑
+  // ** 5. 内容安全审查，首次访问且未有评级时自动评级 **
   if (env.ModerateContentApiKey && metadata.rating_label === "None") {
     try {
       const moderateUrl = `https://api.moderatecontent.com/moderate/?key=${env.ModerateContentApiKey}&url=${fileUrl}`;
       const moderateResponse = await fetch(moderateUrl);
-
       if (moderateResponse.ok) {
         const result = await moderateResponse.json();
         if (result.rating_label) {
           metadata.rating_label = result.rating_label;
           await saveMetadata(env.DB, metadata);
-
           if (result.rating_label === "adult") {
             return Response.redirect(`${url.origin}/block-img.html`, 302);
           }
@@ -77,16 +59,24 @@ export async function onRequest(context) {
     }
   }
 
+  // ** 6. 普通或白名单图片正常访问 **
+  const response = await fetch(fileUrl, {
+    method: request.method,
+    headers: request.headers,
+    body: request.body,
+  });
   return response;
 }
 
-// 获取元数据
+// -- 工具函数 --
+
+// 获取元数据（D1数据库）
 async function getImageMetadata(db, id) {
   const query = await db.prepare("SELECT * FROM images WHERE name = ?").bind(id).first();
   return query;
 }
 
-// 保存元数据（新建或更新）
+// 保存/更新元数据（D1数据库）
 async function saveMetadata(db, metadata) {
   const exists = await db.prepare("SELECT id FROM images WHERE name = ?").bind(metadata.file_id).first();
   if (exists) {
@@ -120,7 +110,6 @@ async function getFilePath(env, file_id) {
     const url = `https://api.telegram.org/bot${env.TG_Bot_Token}/getFile?file_id=${file_id}`;
     const res = await fetch(url);
     if (!res.ok) return null;
-
     const data = await res.json();
     return data.ok ? data.result.file_path : null;
   } catch (e) {
