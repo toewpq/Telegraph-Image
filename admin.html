@@ -78,13 +78,13 @@
       const errorBox = document.getElementById('errorBox');
 
       try {
-        const res = await fetch('/manage/login', {
-          method: 'POST',
-          headers: { 'Content-Type': 'application/json' },
-          body: JSON.stringify({ username, password })
+        const res = await fetch(`/manage/login?u=${encodeURIComponent(username)}&p=${encodeURIComponent(password)}`, {
+          method: 'GET',
+          credentials: 'include'
         });
 
-        if (res.ok) {
+        const text = await res.text();
+        if (res.ok && text === 'ok') {
           errorBox.textContent = '';
           showAdminView();
           loadImages();
