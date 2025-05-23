@@ -65,7 +65,7 @@
   <script>
     async function checkLogin() {
       try {
-        const res = await fetch("/functions/manage/check");
+        const res = await fetch("/manage/check");
         if (!res.ok) return false;
         const data = await res.json();
         return data.loggedIn;
@@ -80,7 +80,7 @@
       const errorBox = document.getElementById('errorBox');
 
       try {
-        const res = await fetch('/functions/manage/login', {
+        const res = await fetch('/manage/login', {
           method: 'POST',
           headers: { 'Content-Type': 'application/json' },
           body: JSON.stringify({ username, password })
@@ -104,7 +104,7 @@
       errorBox.textContent = '';
 
       try {
-        const res = await fetch(`/functions/manage/list?q=${encodeURIComponent(keyword)}`);
+        const res = await fetch(`/manage/list?q=${encodeURIComponent(keyword)}`);
         if (!res.ok) throw new Error("未登录或请求失败");
 
         const data = await res.json();
@@ -130,7 +130,7 @@
     async function deleteImage(id) {
       if (!confirm("确定要删除这张图片吗？")) return;
       try {
-        const res = await fetch('/functions/manage/delete', {
+        const res = await fetch('/manage/delete', {
           method: 'POST',
           headers: { 'Content-Type': 'application/json' },
           body: JSON.stringify({ id })
@@ -143,7 +143,7 @@
     }
 
     async function logout() {
-      await fetch("/functions/manage/logout");
+      await fetch("/manage/logout");
       showLoginView();
     }
 
