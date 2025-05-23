@@ -47,6 +47,8 @@
 | -------------- | ----------------------------------- |
 | `TG_Bot_Token` | 你的 Telegram Bot 的 Token（以 `bot` 开头） |
 | `TG_Chat_ID`   | 目标频道的 chat_id，用于接收文件               |
+| `ADMIN_PASS` | 后台管理密码 |
+| `ADMIN_USERNAME`   | 后台管理用户名               |
 
 ---
 
