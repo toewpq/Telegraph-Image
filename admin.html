@@ -6,62 +6,108 @@
   <title>Telegraph Image 管理后台</title>
   <style>
     body { font-family: sans-serif; padding: 2rem; background: #f9f9f9; }
-    h1 { margin-bottom: 1rem; }
-    input, button { padding: 0.5rem; font-size: 1rem; }
+    .hidden { display: none; }
+    .topbar { display: flex; justify-content: space-between; align-items: center; }
     table { width: 100%; border-collapse: collapse; margin-top: 1rem; background: white; }
     th, td { padding: 0.75rem; border-bottom: 1px solid #ddd; text-align: left; }
     tr:hover { background: #f0f0f0; }
     .delete-btn { color: red; cursor: pointer; }
-    .topbar { display: flex; justify-content: space-between; align-items: center; }
-    .error { color: red; margin-top: 1rem; }
+    input, button { padding: 0.5rem; font-size: 1rem; margin: 4px 0; }
+
+    .login-box {
+      max-width: 360px;
+      margin: 60px auto;
+      background: white;
+      padding: 2rem;
+      border-radius: 8px;
+      box-shadow: 0 4px 12px rgba(0,0,0,0.1);
+    }
+    .error { color: red; margin-top: 1rem; text-align: center; }
   </style>
 </head>
 <body>
-  <div class="topbar">
-    <h1>📂 Telegraph Image 管理后台</h1>
-    <button onclick="logout()">退出登录</button>
+
+  <!-- 登录视图 -->
+  <div id="loginView" class="login-box">
+    <h2>管理员登录</h2>
+    <div class="error" id="errorBox"></div>
+    <input type="text" id="username" placeholder="用户名" />
+    <input type="password" id="password" placeholder="密码" />
+    <button onclick="login()">登录</button>
   </div>
 
-  <input type="text" id="searchInput" placeholder="输入关键词搜索图片..." />
-  <button onclick="loadImages()">搜索</button>
+  <!-- 管理后台视图 -->
+  <div id="adminView" class="hidden">
+    <div class="topbar">
+      <h1>📂 Telegraph Image 管理后台</h1>
+      <button onclick="logout()">退出登录</button>
+    </div>
 
-  <table id="imageTable">
-    <thead>
-      <tr>
-        <th>图片名</th>
-        <th>时间戳</th>
-        <th>类型</th>
-        <th>标签</th>
-        <th>操作</th>
-      </tr>
-    </thead>
-    <tbody></tbody>
-  </table>
+    <input type="text" id="searchInput" placeholder="输入关键词搜索图片..." />
+    <button onclick="loadImages()">搜索</button>
 
-  <div id="errorBox" class="error"></div>
+    <table id="imageTable">
+      <thead>
+        <tr>
+          <th>图片名</th>
+          <th>时间戳</th>
+          <th>类型</th>
+          <th>标签</th>
+          <th>操作</th>
+        </tr>
+      </thead>
+      <tbody></tbody>
+    </table>
+
+    <div id="adminErrorBox" class="error"></div>
+  </div>
 
   <script>
     async function checkLogin() {
       try {
         const res = await fetch("/functions/manage/check");
-        if (!res.ok) throw new Error("未登录");
+        if (!res.ok) return false;
         const data = await res.json();
-        if (!data.loggedIn) throw new Error("未登录");
-      } catch (err) {
-        alert("未登录，请先登录！");
-        window.location.href = "/login.html";
+        return data.loggedIn;
+      } catch {
+        return false;
+      }
+    }
+
+    async function login() {
+      const username = document.getElementById('username').value.trim();
+      const password = document.getElementById('password').value;
+      const errorBox = document.getElementById('errorBox');
+
+      try {
+        const res = await fetch('/functions/manage/login', {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({ username, password })
+        });
+
+        if (res.ok) {
+          errorBox.textContent = '';
+          showAdminView();
+          loadImages();
+        } else {
+          errorBox.textContent = '登录失败，请检查用户名或密码。';
+        }
+      } catch (e) {
+        errorBox.textContent = '网络错误，请稍后再试。';
       }
     }
 
     async function loadImages() {
       const keyword = document.getElementById('searchInput').value.trim();
-      const errorBox = document.getElementById('errorBox');
-      errorBox.textContent = "";
+      const errorBox = document.getElementById('adminErrorBox');
+      errorBox.textContent = '';
+
       try {
         const res = await fetch(`/functions/manage/list?q=${encodeURIComponent(keyword)}`);
         if (!res.ok) throw new Error("未登录或请求失败");
-        const data = await res.json();
 
+        const data = await res.json();
         const tbody = document.querySelector('#imageTable tbody');
         tbody.innerHTML = '';
 
@@ -98,12 +144,28 @@
 
     async function logout() {
       await fetch("/functions/manage/logout");
-      alert("已退出登录");
-      window.location.href = "/login.html";
+      showLoginView();
     }
 
-    // 初始化：检查登录状态 → 加载列表
-    checkLogin().then(loadImages);
+    function showLoginView() {
+      document.getElementById('loginView').classList.remove('hidden');
+      document.getElementById('adminView').classList.add('hidden');
+    }
+
+    function showAdminView() {
+      document.getElementById('loginView').classList.add('hidden');
+      document.getElementById('adminView').classList.remove('hidden');
+    }
+
+    // 页面初始化
+    (async () => {
+      if (await checkLogin()) {
+        showAdminView();
+        loadImages();
+      } else {
+        showLoginView();
+      }
+    })();
   </script>
 </body>
 </html>
