@@ -1,8 +1,8 @@
 export async function onRequest(context) {
-  const { request } = context;
+  const { request, env } = context;
   const { username, password } = await request.json();
 
-  if (username === "admin" && password === context.env.ADMIN_PASS) {
+  if (username === env.ADMIN_USERNAME && password === env.ADMIN_PASS) {
     return new Response("ok", {
       status: 200,
       headers: {
