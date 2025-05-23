@@ -1,4 +1,4 @@
-export async function onRequestPost(context) {
+export async function onRequest(context) {
   const { request, env } = context;
   const { username, password } = await request.json();
 
