@@ -1,12 +1,19 @@
 export async function onRequest(context) {
   const { request, env } = context;
-  const { username, password } = await request.json();
+  const url = new URL(request.url);
 
-  if (username === env.ADMIN_USERNAME && password === env.ADMIN_PASS) {
+  const username = url.searchParams.get("u");
+  const password = url.searchParams.get("p");
+
+  if (
+    username === env.ADMIN_USERNAME &&
+    password === env.ADMIN_PASS
+  ) {
     return new Response("ok", {
       status: 200,
       headers: {
         "Set-Cookie": `session=1; HttpOnly; Secure; Path=/; Max-Age=3600`,
+        "Content-Type": "text/plain",
       },
     });
   }
