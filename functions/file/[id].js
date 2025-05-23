@@ -61,32 +61,31 @@ export async function onRequest(context) {
 
   // ** 6. 普通或白名单图片正常访问 **
   const response = await fetch(fileUrl, {
-  method: request.method,
-  headers: request.headers,
-  body: request.body,
-});
+    method: request.method,
+    headers: request.headers,
+    body: request.body,
+  });
 
-// 创建新的响应头，加入 no-store/no-cache
-const newHeaders = new Headers(response.headers);
-newHeaders.set('Cache-Control', 'no-store, no-cache, must-revalidate, proxy-revalidate');
-newHeaders.set('Pragma', 'no-cache');
-newHeaders.set('Expires', '0');
+  // 创建新的响应头，加入 no-store/no-cache
+  const newHeaders = new Headers(response.headers);
+  newHeaders.set('Cache-Control', 'no-store, no-cache, must-revalidate, proxy-revalidate');
+  newHeaders.set('Pragma', 'no-cache');
+  newHeaders.set('Expires', '0');
 
-return new Response(response.body, {
-  status: response.status,
-  headers: newHeaders,
-});
+  return new Response(response.body, {
+    status: response.status,
+    headers: newHeaders,
+  });
+} // ←←←←←← 关键修复：这里补上大括号！
 
 
 // -- 工具函数 --
 
-// 获取元数据（D1数据库）
 async function getImageMetadata(db, id) {
   const query = await db.prepare("SELECT * FROM images WHERE name = ?").bind(id).first();
   return query;
 }
 
-// 保存/更新元数据（D1数据库）
 async function saveMetadata(db, metadata) {
   const exists = await db.prepare("SELECT id FROM images WHERE name = ?").bind(metadata.file_id).first();
   if (exists) {
@@ -114,7 +113,6 @@ async function saveMetadata(db, metadata) {
   }
 }
 
-// 获取 Telegram 文件路径
 async function getFilePath(env, file_id) {
   try {
     const url = `https://api.telegram.org/bot${env.TG_Bot_Token}/getFile?file_id=${file_id}`;
