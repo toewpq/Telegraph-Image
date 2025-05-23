@@ -12,7 +12,7 @@
     table { width: 100%; border-collapse: collapse; margin-top: 1rem; background: white; table-layout: fixed; }
     th, td { padding: 0.75rem; border-bottom: 1px solid #eee; text-align: left; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
     tr:hover { background: #f0f0f0; }
-    .btn { padding: 0.5rem 1rem; margin: 0.25rem; font-size: 1rem; border: none; cursor: pointer; border-radius: 4px; }
+    .btn { padding: 0.5rem 1rem; margin: 0.25rem 0.5rem 0.25rem 0; font-size: 1rem; border: none; cursor: pointer; border-radius: 4px; }
     .btn-danger { background: #e11d48; color: white; }
     .btn-primary { background: #3b82f6; color: white; }
     .btn-outline { background: white; color: #3b82f6; border: 1px solid #3b82f6; }
@@ -20,9 +20,14 @@
     .login-box { background: white; padding: 2rem; border-radius: 8px; box-shadow: 0 4px 12px rgba(0,0,0,0.1); }
     .error { color: red; text-align: center; margin-bottom: 1rem; }
     .topbar { display: flex; justify-content: space-between; align-items: center; flex-wrap: wrap; gap: 1rem; margin-bottom: 1rem; }
-    @media (max-width: 600px) {
+    .op-buttons { display: flex; flex-wrap: wrap; gap: 4px; }
+    .id-preview { color: #888; font-size: 12px; word-break: break-all; }
+    @media (max-width: 700px) {
+      .container { padding: 0.5rem; }
       .topbar { flex-direction: column; align-items: flex-start; }
       th, td { font-size: 0.9rem; }
+      .btn { width: 100%; margin: 2px 0; }
+      .op-buttons { flex-direction: column; }
     }
   </style>
 </head>
@@ -44,17 +49,16 @@
         <button class="btn btn-outline" onclick="logout()">退出登录</button>
       </div>
 
-      <input type="text" id="searchInput" placeholder="输入关键词搜索图片..." />
+      <input type="text" id="searchInput" placeholder="输入类型/标签/ID关键词搜索..." />
       <button class="btn btn-primary" onclick="loadImages()">搜索</button>
 
       <table>
         <thead>
           <tr>
-            <th style="width: 40%">图片名</th>
-            <th style="width: 20%">时间戳</th>
-            <th style="width: 10%">类型</th>
-            <th style="width: 10%">标签</th>
-            <th style="width: 20%">操作</th>
+            <th style="width: 26%">时间戳</th>
+            <th style="width: 12%">类型</th>
+            <th style="width: 12%">标签</th>
+            <th style="width: 50%">操作</th>
           </tr>
         </thead>
         <tbody id="imageTable"></tbody>
@@ -117,14 +121,17 @@
         data.forEach(item => {
           const row = document.createElement('tr');
           row.innerHTML = `
-            <td title="${item.name}">${item.name}</td>
             <td>${new Date(item.timestamp * 1000).toLocaleString()}</td>
             <td>${item.list_type}</td>
             <td>${item.rating_label}</td>
-            <td>
-              <button class="btn btn-outline" onclick="copyLink('${item.name}')">复制链接</button>
-              <button class="btn btn-primary" onclick="whitelist('${item.name}')">白名单</button>
-              <button class="btn btn-danger" onclick="deleteImage(${item.id})">删除</button>
+            <td style="white-space:normal">
+              <div class="op-buttons">
+                <button class="btn btn-outline" onclick="copyLink('${item.name}')"
+                  title="复制唯一ID：${item.name}">复制链接</button>
+                <button class="btn btn-primary" onclick="whitelist('${item.name}')">白名单</button>
+                <button class="btn btn-danger" onclick="deleteImage(${item.id})">删除</button>
+              </div>
+              <div class="id-preview" title="唯一ID">${item.name}</div>
             </td>
           `;
           tbody.appendChild(row);
