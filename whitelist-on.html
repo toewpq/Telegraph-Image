@@ -2,35 +2,51 @@
 <html lang="zh-CN">
 <head>
   <meta charset="UTF-8">
-  <title>访问受限</title>
+  <title>访问受限 - 白名单模式</title>
   <meta name="viewport" content="width=device-width, initial-scale=1">
   <style>
     body {
-      font-family: sans-serif;
-      background: #fefefe;
+      font-family: "Segoe UI", "PingFang SC", Arial, sans-serif;
+      background: #f7f7f7;
       text-align: center;
-      padding: 5rem;
+      padding: 0;
+      margin: 0;
+      min-height: 100vh;
+      display: flex;
+      flex-direction: column;
+      justify-content: center;
+      align-items: center;
     }
     .box {
-      display: inline-block;
-      padding: 2rem;
-      border: 2px dashed #ccc;
-      border-radius: 10px;
       background: #fff;
+      padding: 2.5rem 2rem;
+      border: 2px dashed #f5c2c7;
+      border-radius: 16px;
+      box-shadow: 0 2px 16px rgba(220,53,69,0.04);
+      max-width: 380px;
     }
     h1 {
       color: #d9534f;
+      font-size: 1.6rem;
+      margin-bottom: 1.2rem;
     }
     p {
-      margin-top: 1rem;
+      margin: 0.8rem 0 0 0;
+      color: #444;
+    }
+    .icon {
+      font-size: 3rem;
+      margin-bottom: 1.2rem;
+      color: #d9534f;
     }
   </style>
 </head>
 <body>
   <div class="box">
-    <h1>🚫 当前图片未在白名单中</h1>
-    <p>站点已启用白名单模式，只有被标记为「白名单」的图片才可访问。</p>
-    <p>如有疑问请联系管理员。</p>
+    <div class="icon">🚫</div>
+    <h1>图片未在白名单中</h1>
+    <p>本站已启用白名单访问，当前图片未被管理员审核通过。</p>
+    <p style="font-size: 0.98rem; color:#888;">如有疑问请联系管理员。</p>
   </div>
 </body>
 </html>
