@@ -133,7 +133,8 @@
         formatError: "上传失败：响应格式错误",
         networkError: "上传失败：网络错误",
         copied: "已复制到剪贴板",
-        copyLink: "复制链接"
+        copyLink: "复制链接",
+        whitelistPreview: "图片未在白名单中，暂无法预览。"
       },
       en: {
         uploadTitle: "Telegraph-Image Free Upload",
@@ -147,7 +148,8 @@
         formatError: "Upload failed: Invalid response format",
         networkError: "Upload failed: Network error",
         copied: "Copied to clipboard",
-        copyLink: "Copy Link"
+        copyLink: "Copy Link",
+        whitelistPreview: "This image is not in the whitelist and cannot be previewed."
       }
     };
 
@@ -222,11 +224,14 @@
             let preview = '';
 
             if (['jpg', 'jpeg', 'png', 'gif', 'webp'].includes(ext)) {
-              preview = `<img src="${url}" class="preview-img">`;
+              preview = `<img src="${url}" class="preview-img"
+                onerror="this.onerror=null;this.style.display='none';document.getElementById('result').insertAdjacentHTML('beforeend','<div style=\'color:#e11d48; margin-top:12px;\'>${getI18n("whitelistPreview")}</div>');">`;
             } else if (['mp4', 'webm', 'ogg'].includes(ext)) {
-              preview = `<video controls class="preview-img" src="${url}"></video>`;
+              preview = `<video controls class="preview-img" src="${url}"
+                onerror="this.onerror=null;this.style.display='none';document.getElementById('result').insertAdjacentHTML('beforeend','<div style=\'color:#e11d48; margin-top:12px;\'>${getI18n("whitelistPreview")}</div>');"></video>`;
             } else if (['mp3', 'wav', 'aac'].includes(ext)) {
-              preview = `<audio controls class="preview-img" src="${url}"></audio>`;
+              preview = `<audio controls class="preview-img" src="${url}"
+                onerror="this.onerror=null;this.style.display='none';document.getElementById('result').insertAdjacentHTML('beforeend','<div style=\'color:#e11d48; margin-top:12px;\'>${getI18n("whitelistPreview")}</div>');"></audio>`;
             }
 
             resultDiv.innerHTML = `
